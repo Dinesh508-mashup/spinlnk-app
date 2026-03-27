@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useHostel from '../hooks/useHostel';
 import useMachines from '../hooks/useMachines';
 import MachineCard from '../components/MachineCard';
@@ -11,11 +12,13 @@ export default function Home() {
   const { machines, loading: machinesLoading, startWash, freeMachine } = useMachines(hostelId);
   const [tab, setTab] = useState('machines');
   const [selectedMachine, setSelectedMachine] = useState(null);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const param = searchParams.toString() ? `?${searchParams.toString()}` : '';
 
   if (hostelLoading || machinesLoading) {
     return <div className="app-container"><p className="loading">Loading...</p></div>;
   }
-
   if (hostelError) {
     return <div className="app-container"><p className="error-msg">{hostelError}</p></div>;
   }
@@ -29,7 +32,7 @@ export default function Home() {
   const activeMachines = machines.filter(m => m.status === 'in-use' && m.end_time && Date.now() < m.end_time);
 
   return (
-    <div className="app-container">
+    <div className="app-container has-nav">
       <header className="header">
         <div className="header-left">
           <span className="logo-icon">🧺</span>
@@ -57,20 +60,25 @@ export default function Home() {
             </div>
           )
         )}
-
         {tab === 'bookings' && (
           <BookingsList machines={activeMachines} onFree={freeMachine} />
         )}
       </div>
 
       {selectedMachine && (
-        <StartWashModal
-          machine={selectedMachine}
-          onStart={handleStartWash}
-          onClose={() => setSelectedMachine(null)}
-        />
+        <StartWashModal machine={selectedMachine} onStart={handleStartWash} onClose={() => setSelectedMachine(null)} />
       )}
 
+      <nav className="bottom-nav">
+        <button className="nav-item active" onClick={() => navigate(`/${param}`)}>
+          <span className="nav-icon">🏠</span>
+          <span className="nav-label">Home</span>
+        </button>
+        <button className="nav-item" onClick={() => navigate(`/lineup${param}`)}>
+          <span className="nav-icon">📋</span>
+          <span className="nav-label">Line-Up</span>
+        </button>
+      </nav>
     </div>
   );
 }
