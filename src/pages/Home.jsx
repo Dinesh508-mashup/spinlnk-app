@@ -4,7 +4,6 @@ import useHostel from '../hooks/useHostel';
 import useMachines from '../hooks/useMachines';
 import MachineCard from '../components/MachineCard';
 import StartWashModal from '../components/StartWashModal';
-import BookingsList from '../components/BookingsList';
 import '../styles/Home.css';
 
 export default function Home() {
@@ -26,8 +25,6 @@ export default function Home() {
     await startWash(machineKey, name, room, cycle, minutes);
     setSelectedMachine(null);
   };
-
-  const activeMachines = machines.filter(m => m.status === 'in-use' && m.end_time && Date.now() < m.end_time);
 
   return (
     <div className="app-container has-nav">
@@ -55,12 +52,6 @@ export default function Home() {
                 <MachineCard key={m.machine_key} machine={m} onBook={setSelectedMachine} onFree={freeMachine} />
               ))}
             </div>
-            {activeMachines.length > 0 && (
-              <>
-                <h2 className="section-title" style={{marginTop: 24}}>Active Bookings</h2>
-                <BookingsList machines={activeMachines} onFree={freeMachine} />
-              </>
-            )}
           </>
         )}
       </div>

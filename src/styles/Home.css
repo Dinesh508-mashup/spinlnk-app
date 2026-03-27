@@ -193,3 +193,34 @@
   margin-top: 12px;
 }
 .booking-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+
+/* ===== LineUp Queue Section ===== */
+.lineup-queue-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e8edf1;
+}
+.lineup-queue-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-light);
+  margin-bottom: 8px;
+}
+.lineup-queue-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.lineup-queue-person:last-child { border-bottom: none; }
+.lineup-queue-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #d4e6f1; color: #1a5276;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 14px; flex-shrink: 0;
+}
+.lineup-queue-info { flex: 1; }
+.lineup-queue-name { display: block; font-weight: 600; font-size: 14px; }
+.lineup-queue-detail { font-size: 12px; color: var(--text-light); }
+.lineup-queue-pos { font-weight: 700; color: var(--primary); font-size: 14px; }

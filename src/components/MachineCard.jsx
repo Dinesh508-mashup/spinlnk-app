@@ -59,10 +59,6 @@ export default function MachineCard({ machine, onBook, onFree }) {
       {queue.length > 0 && (
         <p className="queue-count-small">{queue.length} in queue</p>
       )}
-      <div className="machine-card-actions">
-        <button className="btn btn-done-early" onClick={() => onFree(m.machine_key)}>I'm Done Early</button>
-        <button className="btn btn-moved" onClick={() => onFree(m.machine_key)}>I Moved the Clothes</button>
-      </div>
     </div>
   );
 }
