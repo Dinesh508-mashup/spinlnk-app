@@ -6,7 +6,7 @@ import '../styles/Admin.css';
 export default function Admin() {
   const [screen, setScreen] = useState('login');
   const [hostelId, setHostelId] = useState(null);
-  const [hostelName, setHostelName] = useState('');
+  const [_HostelName, setHostelName] = useState('');
   const [machines, setMachines] = useState([]);
   const [totalWashes, setTotalWashes] = useState(0);
   const [avgWait, setAvgWait] = useState(0);
@@ -32,6 +32,8 @@ export default function Admin() {
         getMachines(hostelId),
         getWashHistory(hostelId),
       ]);
+      const now = Date.now();
+      machineData.forEach(m => { m._expired = m.status === 'in-use' && m.end_time && now >= m.end_time; });
       setMachines(machineData);
       setTotalWashes(historyData.length);
       const durations = historyData.filter(h => typeof h.duration === 'number').map(h => h.duration);
@@ -212,14 +214,14 @@ export default function Admin() {
         <h2 className="section-title">Manage Machines</h2>
         <div className="machine-admin-list">
           {machines.map(m => {
-            const isFree = m.status === 'free' || (m.status === 'in-use' && m.end_time && Date.now() >= m.end_time);
+            const statusFree = m.status !== 'in-use' || !m.end_time || m._expired;
             return (
               <div key={m.machine_key} className="machine-admin-card">
                 <div className="machine-admin-icon">🧺</div>
                 <div className="machine-admin-info">
                   <span className="machine-admin-name">{m.name}</span>
                   <span className="machine-admin-meta">
-                    {(m.type || 'washer').toUpperCase()} • <span className={isFree ? 'status-active' : 'status-inuse'}>{isFree ? 'ACTIVE' : 'IN USE'}</span>
+                    {(m.type || 'washer').toUpperCase()} • <span className={statusFree ? 'status-active' : 'status-inuse'}>{statusFree ? 'ACTIVE' : 'IN USE'}</span>
                   </span>
                 </div>
                 <button className="delete-btn" onClick={() => handleDeleteMachine(m.machine_key)}>🗑</button>
