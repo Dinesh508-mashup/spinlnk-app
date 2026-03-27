@@ -68,5 +68,13 @@ export default function useMachines(hostelId) {
     await fetch();
   };
 
-  return { machines, loading, refresh: fetch, startWash, freeMachine };
+  const extendTime = async (machineKey, extraMinutes) => {
+    const machine = machines.find(m => m.machine_key === machineKey);
+    if (!machine || !machine.end_time) return;
+    const newEndTime = machine.end_time + extraMinutes * 60 * 1000;
+    await updateMachine(hostelId, machineKey, { end_time: newEndTime });
+    await fetch();
+  };
+
+  return { machines, loading, refresh: fetch, startWash, freeMachine, extendTime };
 }

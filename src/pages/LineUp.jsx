@@ -21,7 +21,9 @@ function formatTime(endTime) {
 
 export default function LineUp() {
   const { hostelId, hostelName, loading: hostelLoading, error: hostelError } = useHostel();
-  const { machines, loading: machinesLoading, freeMachine } = useMachines(hostelId);
+  const { machines, loading: machinesLoading, freeMachine, extendTime } = useMachines(hostelId);
+  const [toast, setToast] = useState('');
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const param = searchParams.toString() ? `?${searchParams.toString()}` : '';
@@ -105,24 +107,38 @@ export default function LineUp() {
                     <button className="btn btn-moved" onClick={() => freeMachine(m.machine_key)}>I Moved the Clothes</button>
                   </div>
 
+                  {/* Snooze / Running Late */}
+                  <div className="snooze-section">
+                    <p className="snooze-label">Running late?</p>
+                    <div className="snooze-buttons">
+                      <button className="snooze-btn" onClick={async () => { await extendTime(m.machine_key, 5); showToast('Added 5 minutes'); }}>+5 min</button>
+                      <button className="snooze-btn" onClick={async () => { await extendTime(m.machine_key, 10); showToast('Added 10 minutes'); }}>+10 min</button>
+                      <button className="snooze-btn" onClick={async () => { await extendTime(m.machine_key, 15); showToast('Added 15 minutes'); }}>+15 min</button>
+                    </div>
+                  </div>
+
                   <p className="booking-hint">We'll ping you before it ends 👌</p>
 
-                  {/* Queue list */}
-                  {queue.length > 0 && (
-                    <div className="lineup-queue-section">
-                      <p className="lineup-queue-title">{queue.length} waiting in queue</p>
-                      {queue.map((q, i) => (
-                        <div key={i} className="lineup-queue-person">
-                          <div className="lineup-queue-avatar">{q.name.charAt(0).toUpperCase()}</div>
-                          <div className="lineup-queue-info">
-                            <span className="lineup-queue-name">{q.name}</span>
-                            <span className="lineup-queue-detail">{q.room ? `Room ${q.room}` : ''}</span>
+                  {/* Queue list (always rendered for smooth transition) */}
+                  <div className="lineup-queue-section">
+                    {queue.length > 0 ? (
+                      <>
+                        <p className="lineup-queue-title">{queue.length} waiting in queue</p>
+                        {queue.map((q, i) => (
+                          <div key={i} className="lineup-queue-person">
+                            <div className="lineup-queue-avatar">{q.name.charAt(0).toUpperCase()}</div>
+                            <div className="lineup-queue-info">
+                              <span className="lineup-queue-name">{q.name}</span>
+                              <span className="lineup-queue-detail">{q.room ? `Room ${q.room}` : ''}</span>
+                            </div>
+                            <span className="lineup-queue-pos">#{i + 1}</span>
                           </div>
-                          <span className="lineup-queue-pos">#{i + 1}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        ))}
+                      </>
+                    ) : (
+                      <p className="lineup-queue-empty">No one in queue yet</p>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -148,6 +164,8 @@ export default function LineUp() {
           </>
         )}
       </div>
+
+      {toast && <div className="toast show">{toast}</div>}
 
       <nav className="bottom-nav">
         <button className="nav-item" onClick={() => navigate(`/${param}`)}>

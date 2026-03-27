@@ -224,3 +224,42 @@
 .lineup-queue-name { display: block; font-weight: 600; font-size: 14px; }
 .lineup-queue-detail { font-size: 12px; color: var(--text-light); }
 .lineup-queue-pos { font-weight: 700; color: var(--primary); font-size: 14px; }
+.lineup-queue-empty {
+  font-size: 13px; color: var(--text-light); padding: 6px 0; text-align: center;
+}
+
+/* ===== Snooze / Running Late ===== */
+.snooze-section {
+  margin-top: 16px;
+  text-align: center;
+}
+.snooze-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-light);
+  margin-bottom: 8px;
+}
+.snooze-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.snooze-btn {
+  padding: 8px 16px;
+  border: 1.5px solid #e8edf1;
+  border-radius: 10px;
+  background: var(--card);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+}
+.snooze-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+.snooze-btn:active {
+  transform: scale(0.95);
+}
