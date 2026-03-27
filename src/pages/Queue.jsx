@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import useHostel from '../hooks/useHostel';
 import useMachines from '../hooks/useMachines';
 import { joinQueue, leaveQueue } from '../lib/supabase';
-import BottomNav from '../components/BottomNav';
 import NameModal from '../components/NameModal';
 import '../styles/Queue.css';
 
@@ -199,7 +198,6 @@ export default function Queue() {
 
       {toast && <div className="toast show">{toast}</div>}
       {showNameModal && <NameModal onSave={handleNameSave} onClose={() => setShowNameModal(false)} />}
-      <BottomNav hostelId={hostelId} active="queue" />
     </div>
   );
 }

@@ -4,7 +4,6 @@ import useMachines from '../hooks/useMachines';
 import MachineCard from '../components/MachineCard';
 import StartWashModal from '../components/StartWashModal';
 import BookingsList from '../components/BookingsList';
-import BottomNav from '../components/BottomNav';
 import '../styles/Home.css';
 
 export default function Home() {
@@ -72,7 +71,6 @@ export default function Home() {
         />
       )}
 
-      <BottomNav hostelId={hostelId} active="home" />
     </div>
   );
 }
