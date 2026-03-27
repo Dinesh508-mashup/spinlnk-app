@@ -108,14 +108,27 @@ export default function LineUp() {
                   </div>
 
                   {/* Snooze / Running Late */}
-                  <div className="snooze-section">
-                    <p className="snooze-label">Running late?</p>
-                    <div className="snooze-buttons">
-                      <button className="snooze-btn" onClick={async () => { await extendTime(m.machine_key, 5); showToast('Added 5 minutes'); }}>+5 min</button>
-                      <button className="snooze-btn" onClick={async () => { await extendTime(m.machine_key, 10); showToast('Added 10 minutes'); }}>+10 min</button>
-                      <button className="snooze-btn" onClick={async () => { await extendTime(m.machine_key, 15); showToast('Added 15 minutes'); }}>+15 min</button>
-                    </div>
-                  </div>
+                  {(() => {
+                    const used = m.snooze_count || 0;
+                    const left = 3 - used;
+                    return (
+                      <div className="snooze-section">
+                        <p className="snooze-label">Running late?</p>
+                        {left > 0 ? (
+                          <>
+                            <button className="snooze-btn" onClick={async () => {
+                              const ok = await extendTime(m.machine_key);
+                              if (ok) showToast(`+5 min added (${left - 1} left)`);
+                              else showToast('No more extensions');
+                            }}>+5 min</button>
+                            <p className="snooze-remaining">{left} extension{left !== 1 ? 's' : ''} remaining</p>
+                          </>
+                        ) : (
+                          <p className="snooze-maxed">No extensions remaining</p>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   <p className="booking-hint">We'll ping you before it ends 👌</p>
 
