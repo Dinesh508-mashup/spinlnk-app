@@ -10,6 +10,42 @@ function formatMinsLeft(endTime) {
   return Math.max(0, Math.ceil((endTime - Date.now()) / 60000));
 }
 
+function timeAgo(joinedAt) {
+  if (!joinedAt) return '';
+  const diff = Math.max(0, Math.floor((Date.now() - new Date(joinedAt).getTime()) / 60000));
+  return `Joined ${diff}m ago`;
+}
+
+/* Peak usage bar chart */
+function PeakUsageChart() {
+  const data = [
+    { label: 'Mon', h: 45 }, { label: 'Tue', h: 35 }, { label: 'Wed', h: 55 },
+    { label: 'Thu', h: 50 }, { label: 'Fri', h: 70 }, { label: 'Sat', h: 90 },
+    { label: 'Sun', h: 80 },
+  ];
+  const barW = 28, gap = 10, maxH = 70;
+  const totalW = data.length * (barW + gap);
+  return (
+    <div className="peak-chart-wrap">
+      <svg width={totalW} height={maxH + 22} viewBox={`0 0 ${totalW} ${maxH + 22}`}>
+        {data.map((d, i) => {
+          const x = i * (barW + gap);
+          const bh = (d.h / 100) * maxH;
+          const isPeak = d.h >= 70;
+          return (
+            <g key={i}>
+              <rect x={x} y={maxH - bh} width={barW} height={bh} rx={4}
+                fill={isPeak ? '#dc3240' : '#356668'} opacity={isPeak ? 0.85 : 0.55} />
+              <text x={x + barW / 2} y={maxH + 14} textAnchor="middle"
+                fontSize="9" fill="#7f8c8d" fontFamily="DM Sans">{d.label}</text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 export default function Join() {
   const { hostelId, hostelName, loading: hostelLoading, error: hostelError } = useHostel();
   const { machines, loading: machinesLoading, refresh } = useMachines(hostelId);
@@ -87,82 +123,156 @@ export default function Join() {
   };
 
   const inUse = machineStatuses.filter(m => !m.isFree);
+  const free = machineStatuses.filter(m => m.isFree);
 
   return (
     <div className="app-container has-nav">
+      {/* Header */}
       <header className="header">
         <div className="header-left">
-          <span className="logo-icon">✋</span>
-          <div>
-            <h1 className="app-title">SpinLnk</h1>
-            <p className="app-subtitle">{hostelName} — Join Queue</p>
+          <button className="header-icon-btn" aria-label="Menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <h1 className="app-title">SpinLnk</h1>
+        </div>
+        <div className="header-right">
+          <div className="header-avatar">
+            {(localStorage.getItem('userName') || 'U').charAt(0).toUpperCase()}
           </div>
         </div>
       </header>
 
       <div className="content">
-        {inUse.length === 0 ? (
-          <div className="all-free-msg">
-            <span>🎉</span>
-            <h3>All machines are free!</h3>
-            <p>No need to queue — scan a machine QR to start a wash.</p>
-          </div>
+        {/* Page heading */}
+        <div className="join-heading">
+          <h2>Join the Queue</h2>
+          <p>Live status of available units</p>
+        </div>
+
+        {machines.length === 0 ? (
+          <p className="empty-state">No machines set up yet.</p>
         ) : (
-          inUse.map(m => {
-            const queue = m.queue_members || [];
-            const isInQueue = queue.some(q => q.name === userName);
+          <>
+            {/* In-Use machines with queue */}
+            {inUse.map(m => {
+              const queue = m.queue_members || [];
+              const isInQueue = queue.some(q => q.name === userName);
 
-            return (
-              <div key={m.machine_key} className="queue-card">
-                <div className="queue-card-header">
-                  <h3>Queue — {m.name}</h3>
-                  <span className="status-badge in-use">
-                    {m.minsLeft} min left
-                  </span>
-                </div>
-                <p className="queue-reserved">
-                  Reserved by {m.user_name}{m.room ? ` • Room ${m.room}` : ''} • {m.cycle} cycle
-                </p>
-
-                {queue.length > 0 ? (
-                  <div className="queue-list">
-                    <p className="queue-count">{queue.length} in queue</p>
-                    {queue.map((q, i) => (
-                      <div key={i} className="queue-person">
-                        <div className="queue-avatar">{q.name.charAt(0).toUpperCase()}</div>
-                        <div className="queue-person-info">
-                          <span className="queue-person-name">{q.name}</span>
-                          <span className="queue-person-detail">{q.room ? `Room ${q.room}` : ''}</span>
-                        </div>
-                        <span className="queue-position">#{i + 1}</span>
-                      </div>
-                    ))}
+              return (
+                <div key={m.machine_key} className="join-machine-section">
+                  <div className="join-machine-header">
+                    <span className="join-machine-icon">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#356668" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="12" cy="12" r="4"/></svg>
+                    </span>
+                    <div className="join-machine-info">
+                      <span className="join-machine-name">{m.name}</span>
+                      <span className="join-machine-status in-use-text">In Use &mdash; {m.minsLeft} min left</span>
+                    </div>
                   </div>
-                ) : (
-                  <p className="queue-empty">No one in queue yet. Be the first!</p>
-                )}
 
-                {isInQueue ? (
-                  <button className="btn btn-leave" onClick={() => handleLeave(m.machine_key)}>Leave Queue</button>
-                ) : (
-                  <button className="btn btn-join" onClick={() => handleJoin(m.machine_key)}>Join Queue</button>
-                )}
+                  {/* Queue list */}
+                  <div className="join-queue-list">
+                    {queue.length > 0 ? queue.map((q, i) => (
+                      <div key={i} className="join-queue-person">
+                        <div className="join-queue-avatar">{q.name.charAt(0).toUpperCase()}</div>
+                        <div className="join-queue-person-info">
+                          <span className="join-queue-person-name">
+                            {q.name}{q.name === userName ? ' (You)' : ''}
+                          </span>
+                          <span className="join-queue-person-detail">
+                            {timeAgo(q.joined_at)}
+                          </span>
+                        </div>
+                      </div>
+                    )) : (
+                      <p className="join-queue-empty">No one in queue yet. Be the first!</p>
+                    )}
+                  </div>
+
+                  {isInQueue ? (
+                    <button className="btn btn-leave" onClick={() => handleLeave(m.machine_key)}>Leave Queue</button>
+                  ) : (
+                    <button className="btn btn-join-queue" onClick={() => handleJoin(m.machine_key)}>Add Me to Queue</button>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Free machines */}
+            {free.map(m => (
+              <div key={m.machine_key} className="join-machine-section">
+                <div className="join-machine-header">
+                  <span className="join-machine-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#27ae60" strokeWidth="2" strokeLinecap="round"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="12" cy="12" r="4"/></svg>
+                  </span>
+                  <div className="join-machine-info">
+                    <span className="join-machine-name">{m.name}</span>
+                    <span className="join-machine-status free-text">Free</span>
+                  </div>
+                </div>
+                <button className="btn btn-scan" disabled>Scan QR to Book</button>
               </div>
-            );
-          })
+            ))}
+
+            {inUse.length === 0 && free.length > 0 && (
+              <div className="all-free-msg" style={{ marginBottom: 16 }}>
+                <span>&#x1F389;</span>
+                <h3>All machines are free!</h3>
+                <p>No need to queue &mdash; scan a machine QR to start a wash.</p>
+              </div>
+            )}
+
+            {/* Divider */}
+            <hr className="join-divider" />
+
+            {/* Usage Insights */}
+            <div className="join-insights">
+              <h3 className="insights-title">Usage Insights</h3>
+
+              <div className="insights-chart-card">
+                <p className="insights-chart-label">Peak Usage Times</p>
+                <PeakUsageChart />
+              </div>
+
+              <p className="insights-sub-title">Recommended Booking Slots</p>
+
+              <div className="insights-slots">
+                <div className="insight-slot-card">
+                  <span className="slot-emoji">&#x2600;&#xFE0F;</span>
+                  <div>
+                    <strong>Morning</strong>
+                    <span>8:30 &ndash; 10:00 AM</span>
+                  </div>
+                </div>
+                <div className="insight-slot-card">
+                  <span className="slot-emoji">&#x1F319;</span>
+                  <div>
+                    <strong>Late Night</strong>
+                    <span>After 10:30 PM</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="insights-tip">
+                <span className="tip-icon">&#x1F4A1;</span>
+                <span>Tuesdays and Wednesdays are typically less crowded.</span>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
       {toast && <div className="toast show">{toast}</div>}
       {showNameModal && <NameModal onSave={handleNameSave} onClose={() => setShowNameModal(false)} />}
 
+      {/* Bottom nav */}
       <nav className="bottom-nav">
         <button className="nav-item" onClick={() => navigate(`/queue${param}`)}>
-          <span className="nav-icon">📡</span>
+          <span className="nav-icon">&#x1F4E1;</span>
           <span className="nav-label">Live</span>
         </button>
         <button className="nav-item active" onClick={() => navigate(`/join${param}`)}>
-          <span className="nav-icon">✋</span>
+          <span className="nav-icon">&#x270B;</span>
           <span className="nav-label">Join</span>
         </button>
       </nav>
