@@ -39,6 +39,10 @@ export default function Home() {
             <p className="app-subtitle">{hostelName}</p>
           </div>
         </div>
+        <div className="header-right">
+          <button className="header-icon-btn" aria-label="Notifications">🔔</button>
+          <button className="header-icon-btn" aria-label="Settings">⚙️</button>
+        </div>
       </header>
 
       <div className="content">
@@ -53,7 +57,7 @@ export default function Home() {
             </div>
             {activeMachines.length > 0 && (
               <>
-                <h2 className="section-title" style={{marginTop: 20}}>Active Bookings</h2>
+                <h2 className="section-title" style={{marginTop: 24}}>Active Bookings</h2>
                 <BookingsList machines={activeMachines} onFree={freeMachine} />
               </>
             )}

@@ -1,32 +1,195 @@
+/* ===== Machine List ===== */
 .machine-list { display: flex; flex-direction: column; gap: 12px; }
 
-.machine-card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.machine-card-row { display: flex; justify-content: space-between; align-items: flex-start; }
+/* ===== Machine Card ===== */
+.machine-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: box-shadow 0.2s;
+}
+.machine-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+
+.machine-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.machine-card-info { flex: 1; }
+.machine-emoji { font-size: 36px; }
 .machine-name { font-size: 18px; font-weight: 700; margin: 6px 0 4px; }
 .machine-sub { font-size: 13px; color: var(--text-light); }
-.machine-emoji { font-size: 32px; }
-.timer-mini { font-size: 24px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
-.queue-count-small { font-size: 12px; color: var(--text-light); margin-top: 8px; }
-.machine-card-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 
+/* Free card - start wash button */
+.machine-card.free .btn-start-wash {
+  margin-top: 14px;
+  font-size: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  letter-spacing: 0.3px;
+}
+
+/* In-use card */
+.machine-card.in-use {
+  border-left: 4px solid var(--red);
+}
+.machine-card-timer-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+}
+.timer-mini {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.timer-cycle-label {
+  font-size: 13px;
+  color: var(--text-light);
+  font-weight: 500;
+}
+.timer-user-label {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+  margin-top: 2px;
+}
+.queue-count-small { font-size: 12px; color: var(--text-light); margin-top: 8px; }
+.machine-card-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+
+/* ===== Wash Cycle Selector ===== */
 .cycle-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-.cycle-btn { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid #ddd; border-radius: 12px; background: white; cursor: pointer; text-align: left; }
-.cycle-btn.selected { border-color: var(--primary); background: var(--primary-light); }
+.cycle-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 2px solid #e8edf1;
+  border-radius: 14px;
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.cycle-btn:hover { border-color: #b0c4d8; }
+.cycle-btn.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
 .cycle-btn span:first-child { font-size: 22px; }
-.cycle-btn strong { display: block; font-size: 14px; }
+.cycle-btn strong { display: block; font-size: 14px; font-weight: 700; }
 .cycle-btn small { color: var(--text-light); font-size: 12px; }
 
 .custom-picker { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 12px; }
-.custom-picker button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #ddd; background: white; font-size: 20px; cursor: pointer; }
+.custom-picker button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid #ddd;
+  background: white;
+  font-size: 20px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
 .custom-value { font-size: 20px; font-weight: 700; min-width: 80px; text-align: center; }
 
+/* ===== Start Wash Full Screen ===== */
+.start-wash-machine-icon {
+  text-align: center;
+  font-size: 48px;
+  margin: 16px 0 8px;
+}
+
+/* ===== All Free Banner ===== */
 .all-free-banner { text-align: center; padding: 30px; }
 .all-free-banner span { font-size: 40px; display: block; margin-bottom: 10px; }
 
-.bookings-list { display: flex; flex-direction: column; gap: 12px; }
-.bookings-list h3 { margin-bottom: 8px; }
-.booking-card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-.booking-info { display: flex; align-items: center; gap: 12px; }
-.booking-timer { font-size: 28px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; min-width: 80px; }
-.booking-detail { font-size: 13px; color: var(--text-light); margin-top: 4px; }
-.booking-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+/* ===== Bookings List (Active Wash - Screen 3) ===== */
+.bookings-list { display: flex; flex-direction: column; gap: 16px; }
+.bookings-list h3 { margin-bottom: 8px; font-size: 16px; font-weight: 700; }
+
+.booking-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  text-align: center;
+}
+.booking-card-header {
+  margin-bottom: 16px;
+}
+
+/* Circular Timer Ring */
+.timer-ring-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+}
+.timer-ring {
+  position: relative;
+  width: 180px;
+  height: 180px;
+}
+.timer-ring svg {
+  transform: rotate(-90deg);
+  width: 180px;
+  height: 180px;
+}
+.timer-ring-bg {
+  fill: none;
+  stroke: #e8edf1;
+  stroke-width: 8;
+}
+.timer-ring-progress {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear;
+}
+.timer-ring-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.timer-ring-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-light);
+  margin-bottom: 4px;
+}
+.timer-ring-time {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.timer-ring-user {
+  font-size: 13px;
+  color: var(--text-light);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.booking-cycle-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 4px;
+}
+.booking-hint {
+  font-size: 13px;
+  color: var(--text-light);
+  margin-top: 12px;
+}
+.booking-actions { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }

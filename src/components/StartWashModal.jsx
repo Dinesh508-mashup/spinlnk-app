@@ -26,8 +26,9 @@ export default function StartWashModal({ machine, onStart, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
+    <div className="fullscreen-modal">
+      <div className="fullscreen-modal-inner">
+        <div className="start-wash-machine-icon">🧺</div>
         <h2>{machine.name} is yours 🤙</h2>
 
         <label>YOUR NAME</label>
@@ -53,7 +54,7 @@ export default function StartWashModal({ machine, onStart, onClose }) {
             onClick={() => setUseCustom(true)}
           >
             <span>⏱️</span>
-            <div><strong>Custom</strong><small>Set time</small></div>
+            <div><strong>Custom Timer</strong><small>Set time</small></div>
           </button>
         </div>
 
@@ -66,9 +67,21 @@ export default function StartWashModal({ machine, onStart, onClose }) {
         )}
 
         {error && <p className="form-error">{error}</p>}
-        <button className="btn btn-start" onClick={handleSubmit}>Start Wash</button>
-        <button className="btn btn-cancel" onClick={onClose}>Cancel</button>
+        <button className="btn btn-start-wash" onClick={handleSubmit}>Start Wash</button>
+        <p className="hint">You'll get notified when it's done</p>
+        <button className="btn btn-cancel" onClick={onClose} style={{marginTop: 8}}>Cancel</button>
       </div>
+
+      <nav className="bottom-nav">
+        <button className="nav-item active">
+          <span className="nav-icon">🏠</span>
+          <span className="nav-label">Home</span>
+        </button>
+        <button className="nav-item">
+          <span className="nav-icon">📋</span>
+          <span className="nav-label">Line-Up</span>
+        </button>
+      </nav>
     </div>
   );
 }
