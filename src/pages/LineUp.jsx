@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useHostel from '../hooks/useHostel';
 import useMachines from '../hooks/useMachines';
+import { getWashHistory, addWashHistory } from '../lib/supabase';
 import '../styles/Home.css';
 
 const RING_RADIUS = 76;
@@ -23,9 +24,12 @@ export default function LineUp() {
   const { hostelId, hostelName, loading: hostelLoading, error: hostelError } = useHostel();
   const { machines, loading: machinesLoading, freeMachine, extendTime, verifyAccessCode } = useMachines(hostelId);
   const [toast, setToast] = useState('');
-  const [codePrompt, setCodePrompt] = useState(null); // { machineKey }
+  const [codePrompt, setCodePrompt] = useState(null);
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
+  const [movedPrompt, setMovedPrompt] = useState(null); // { machineKey }
+  const [movedName, setMovedName] = useState('');
+  const [history, setHistory] = useState([]);
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const handleDoneEarly = (machineKey) => {
@@ -37,6 +41,41 @@ export default function LineUp() {
     } else {
       freeMachine(machineKey);
     }
+  };
+
+  // Fetch history
+  useEffect(() => {
+    if (!hostelId) return;
+    getWashHistory(hostelId).then(setHistory).catch(() => {});
+    const interval = setInterval(() => {
+      getWashHistory(hostelId).then(setHistory).catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [hostelId]);
+
+  const handleMovedClothes = (machineKey) => {
+    setMovedPrompt({ machineKey });
+    setMovedName('');
+  };
+
+  const handleMovedSubmit = async () => {
+    if (!movedName.trim()) return;
+    const machine = machines.find(m => m.machine_key === movedPrompt.machineKey);
+    if (machine) {
+      await addWashHistory(hostelId, {
+        machine_key: machine.machine_key,
+        machine_name: machine.name,
+        user_name: movedName.trim(),
+        room: null,
+        cycle: 'Moved clothes',
+        duration: null,
+        started_at: new Date().toISOString(),
+      });
+    }
+    await freeMachine(movedPrompt.machineKey);
+    setMovedPrompt(null);
+    showToast(`${movedName.trim()} moved the clothes`);
+    getWashHistory(hostelId).then(setHistory).catch(() => {});
   };
 
   const handleCodeSubmit = () => {
@@ -129,7 +168,7 @@ export default function LineUp() {
                   {/* Actions */}
                   <div className="booking-actions">
                     <button className="btn btn-done-early" onClick={() => handleDoneEarly(m.machine_key)}>I'm Done Early</button>
-                    <button className="btn btn-moved" onClick={() => freeMachine(m.machine_key)}>I Moved the Clothes</button>
+                    <button className="btn btn-moved" onClick={() => handleMovedClothes(m.machine_key)}>I Moved the Clothes</button>
                   </div>
 
                   {/* Snooze / Running Late */}
@@ -199,9 +238,51 @@ export default function LineUp() {
                 ))}
               </>
             )}
+            {/* History Log */}
+            {history.length > 0 && (
+              <>
+                <h2 className="section-title" style={{ marginTop: 24 }}>History</h2>
+                <div className="history-log">
+                  {history.slice(0, 20).map((h, i) => (
+                    <div key={i} className="history-entry">
+                      <div className="history-entry-left">
+                        <span className="history-machine-name">{h.machine_name}</span>
+                        <span className="history-detail">
+                          {h.cycle}{h.duration ? ` • ${h.duration} min` : ''} • {h.user_name}
+                        </span>
+                      </div>
+                      <span className="history-time">
+                        {new Date(h.started_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
+
+      {/* Moved Clothes Modal */}
+      {movedPrompt && (
+        <div className="modal-overlay" onClick={() => setMovedPrompt(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center', fontSize: 32, marginBottom: 8 }}>👕</div>
+            <h3>Who moved the clothes?</h3>
+            <p>Enter your name so the owner knows who helped.</p>
+            <label>YOUR NAME</label>
+            <input
+              value={movedName}
+              onChange={e => setMovedName(e.target.value)}
+              placeholder="Enter your name"
+              maxLength={20}
+              autoFocus
+            />
+            <button className="btn btn-start" onClick={handleMovedSubmit} style={{ marginTop: 12 }}>Confirm</button>
+            <button className="btn btn-cancel" onClick={() => setMovedPrompt(null)} style={{ marginTop: 8 }}>Go Back</button>
+          </div>
+        </div>
+      )}
 
       {/* Access Code Modal */}
       {codePrompt && (
