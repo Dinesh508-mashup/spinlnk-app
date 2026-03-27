@@ -14,15 +14,17 @@ export default function StartWashModal({ machine, onStart, onClose }) {
   const [cycle, setCycle] = useState(CYCLES[2]);
   const [customMin, setCustomMin] = useState(20);
   const [useCustom, setUseCustom] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
     if (!name.trim()) { setError('Enter your name.'); return; }
     if (!room.trim()) { setError('Enter your room number.'); return; }
+    if (!accessCode.trim()) { setError('Set an access code to secure your booking.'); return; }
     localStorage.setItem('userName', name.trim());
     localStorage.setItem('userRoom', room.trim());
     const c = useCustom ? { name: 'Custom', minutes: customMin } : cycle;
-    onStart(machine.machine_key, name.trim(), room.trim(), c.name, c.minutes);
+    onStart(machine.machine_key, name.trim(), room.trim(), c.name, c.minutes, accessCode.trim());
   };
 
   return (
@@ -36,6 +38,10 @@ export default function StartWashModal({ machine, onStart, onClose }) {
 
         <label>ROOM NUMBER</label>
         <input value={room} onChange={e => setRoom(e.target.value)} placeholder="Enter room number" maxLength={10} />
+
+        <label>SET ACCESS CODE</label>
+        <input value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="e.g. 1234" maxLength={6} type="password" autoComplete="off" />
+        <p className="access-code-hint">You'll need this to end your wash early. Keep it private.</p>
 
         <label>SELECT WASH CYCLE</label>
         <div className="cycle-list">

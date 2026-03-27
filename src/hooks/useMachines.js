@@ -39,7 +39,7 @@ export default function useMachines(hostelId) {
     return () => clearInterval(interval);
   }, [fetch]);
 
-  const startWash = async (machineKey, userName, room, cycleName, minutes) => {
+  const startWash = async (machineKey, userName, room, cycleName, minutes, accessCode) => {
     const endTime = Date.now() + minutes * 60 * 1000;
     await updateMachine(hostelId, machineKey, {
       status: 'in-use',
@@ -48,6 +48,7 @@ export default function useMachines(hostelId) {
       cycle: cycleName,
       end_time: endTime,
       snooze_count: 0,
+      access_code: accessCode || null,
     });
     await addWashHistory(hostelId, {
       machine_key: machineKey,
@@ -63,10 +64,16 @@ export default function useMachines(hostelId) {
 
   const freeMachine = async (machineKey) => {
     await updateMachine(hostelId, machineKey, {
-      status: 'free', user_name: null, room: null, cycle: null, end_time: null, snooze_count: 0,
+      status: 'free', user_name: null, room: null, cycle: null, end_time: null, snooze_count: 0, access_code: null,
     });
     await clearQueue(hostelId, machineKey);
     await fetch();
+  };
+
+  const verifyAccessCode = (machineKey, code) => {
+    const machine = machines.find(m => m.machine_key === machineKey);
+    if (!machine || !machine.access_code) return true;
+    return machine.access_code === code;
   };
 
   const extendTime = async (machineKey) => {
@@ -80,5 +87,5 @@ export default function useMachines(hostelId) {
     return true;
   };
 
-  return { machines, loading, refresh: fetch, startWash, freeMachine, extendTime };
+  return { machines, loading, refresh: fetch, startWash, freeMachine, extendTime, verifyAccessCode };
 }

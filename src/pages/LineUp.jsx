@@ -21,9 +21,34 @@ function formatTime(endTime) {
 
 export default function LineUp() {
   const { hostelId, hostelName, loading: hostelLoading, error: hostelError } = useHostel();
-  const { machines, loading: machinesLoading, freeMachine, extendTime } = useMachines(hostelId);
+  const { machines, loading: machinesLoading, freeMachine, extendTime, verifyAccessCode } = useMachines(hostelId);
   const [toast, setToast] = useState('');
+  const [codePrompt, setCodePrompt] = useState(null); // { machineKey }
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState('');
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  const handleDoneEarly = (machineKey) => {
+    const machine = machines.find(m => m.machine_key === machineKey);
+    if (machine && machine.access_code) {
+      setCodePrompt({ machineKey });
+      setCodeInput('');
+      setCodeError('');
+    } else {
+      freeMachine(machineKey);
+    }
+  };
+
+  const handleCodeSubmit = () => {
+    if (!codePrompt) return;
+    if (verifyAccessCode(codePrompt.machineKey, codeInput)) {
+      freeMachine(codePrompt.machineKey);
+      setCodePrompt(null);
+      showToast('Machine freed!');
+    } else {
+      setCodeError('Wrong access code. Try again.');
+    }
+  };
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const param = searchParams.toString() ? `?${searchParams.toString()}` : '';
@@ -103,7 +128,7 @@ export default function LineUp() {
 
                   {/* Actions */}
                   <div className="booking-actions">
-                    <button className="btn btn-done-early" onClick={() => freeMachine(m.machine_key)}>I'm Done Early</button>
+                    <button className="btn btn-done-early" onClick={() => handleDoneEarly(m.machine_key)}>I'm Done Early</button>
                     <button className="btn btn-moved" onClick={() => freeMachine(m.machine_key)}>I Moved the Clothes</button>
                   </div>
 
@@ -177,6 +202,29 @@ export default function LineUp() {
           </>
         )}
       </div>
+
+      {/* Access Code Modal */}
+      {codePrompt && (
+        <div className="modal-overlay" onClick={() => setCodePrompt(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div style={{ textAlign: 'center', fontSize: 32, marginBottom: 8 }}>🔒</div>
+            <h3>Enter Access Code</h3>
+            <p>Enter the code you set when booking to end early.</p>
+            <label>ACCESS CODE</label>
+            <input
+              type="password"
+              value={codeInput}
+              onChange={e => { setCodeInput(e.target.value); setCodeError(''); }}
+              placeholder="Enter your code"
+              maxLength={6}
+              autoFocus
+            />
+            {codeError && <p className="form-error">{codeError}</p>}
+            <button className="btn btn-start" onClick={handleCodeSubmit} style={{ marginTop: 12 }}>Confirm</button>
+            <button className="btn btn-cancel" onClick={() => setCodePrompt(null)} style={{ marginTop: 8 }}>Go Back</button>
+          </div>
+        </div>
+      )}
 
       {toast && <div className="toast show">{toast}</div>}
 

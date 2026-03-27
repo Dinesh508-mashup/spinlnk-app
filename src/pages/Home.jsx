@@ -21,8 +21,8 @@ export default function Home() {
     return <div className="app-container"><p className="error-msg">{hostelError}</p></div>;
   }
 
-  const handleStartWash = async (machineKey, name, room, cycle, minutes) => {
-    await startWash(machineKey, name, room, cycle, minutes);
+  const handleStartWash = async (machineKey, name, room, cycle, minutes, accessCode) => {
+    await startWash(machineKey, name, room, cycle, minutes, accessCode);
     setSelectedMachine(null);
   };
 
