@@ -10,7 +10,6 @@ import '../styles/Home.css';
 export default function Home() {
   const { hostelId, hostelName, loading: hostelLoading, error: hostelError } = useHostel();
   const { machines, loading: machinesLoading, startWash, freeMachine } = useMachines(hostelId);
-  const [tab, setTab] = useState('machines');
   const [selectedMachine, setSelectedMachine] = useState(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -26,7 +25,6 @@ export default function Home() {
   const handleStartWash = async (machineKey, name, room, cycle, minutes) => {
     await startWash(machineKey, name, room, cycle, minutes);
     setSelectedMachine(null);
-    setTab('bookings');
   };
 
   const activeMachines = machines.filter(m => m.status === 'in-use' && m.end_time && Date.now() < m.end_time);
@@ -43,25 +41,23 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="tabs">
-        <button className={`tab ${tab === 'machines' ? 'active' : ''}`} onClick={() => setTab('machines')}>Machines</button>
-        <button className={`tab ${tab === 'bookings' ? 'active' : ''}`} onClick={() => setTab('bookings')}>Bookings</button>
-      </div>
-
       <div className="content">
-        {tab === 'machines' && (
-          machines.length === 0 ? (
-            <p className="empty-state">No machines available yet.</p>
-          ) : (
+        {machines.length === 0 ? (
+          <p className="empty-state">No machines available yet.</p>
+        ) : (
+          <>
             <div className="machine-list">
               {machines.map(m => (
                 <MachineCard key={m.machine_key} machine={m} onBook={setSelectedMachine} onFree={freeMachine} />
               ))}
             </div>
-          )
-        )}
-        {tab === 'bookings' && (
-          <BookingsList machines={activeMachines} onFree={freeMachine} />
+            {activeMachines.length > 0 && (
+              <>
+                <h2 className="section-title" style={{marginTop: 20}}>Active Bookings</h2>
+                <BookingsList machines={activeMachines} onFree={freeMachine} />
+              </>
+            )}
+          </>
         )}
       </div>
 
