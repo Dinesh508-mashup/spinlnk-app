@@ -33,7 +33,7 @@ export default function MachineCard({ machine, onBook, onFree }) {
             <h3 className="machine-name">{m.name}</h3>
             <p className="machine-sub">Available now</p>
           </div>
-          <span className="machine-emoji">🫧</span>
+          <span className="machine-emoji"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="14" r="5"/><path d="M9.5 13c1-.8 2.5-.8 5 0"/><line x1="6" y1="6" x2="6" y2="6.01"/><line x1="10" y1="6" x2="18" y2="6"/></svg></span>
         </div>
         <button className="btn btn-start-wash" onClick={() => onBook(m)}>Start Wash</button>
       </div>
@@ -47,7 +47,7 @@ export default function MachineCard({ machine, onBook, onFree }) {
           <span className="status-badge in-use">IN USE</span>
           <h3 className="machine-name">{m.name}</h3>
         </div>
-        <span className="machine-emoji">🫧</span>
+        <span className="machine-emoji"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="14" r="5"/><path d="M9.5 13c1-.8 2.5-.8 5 0"/><line x1="6" y1="6" x2="6" y2="6.01"/><line x1="10" y1="6" x2="18" y2="6"/></svg></span>
       </div>
       <div className="machine-card-timer-row">
         <div className="timer-mini">{timeLeft}</div>

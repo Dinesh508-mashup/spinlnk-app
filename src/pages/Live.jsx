@@ -1,42 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useHostel from '../hooks/useHostel';
 import useMachines from '../hooks/useMachines';
+import useNotifications from '../hooks/useNotifications';
+import useAlarm from '../hooks/useAlarm';
+import QrScannerModal from '../components/QrScannerModal';
+import NotificationPanel from '../components/NotificationPanel';
+import AlarmOverlay from '../components/AlarmOverlay';
+import spinlnkLogo from '../assets/spinlnk-logo.png';
 import '../styles/Queue.css';
+import '../styles/Notifications.css';
+import '../styles/Alarm.css';
 
 function formatMinsLeft(endTime) {
   return Math.max(0, Math.ceil((endTime - Date.now()) / 60000));
-}
-
-/* tiny SVG bar chart for usage forecast */
-function UsageForecastChart() {
-  const hours = [
-    { label: '6a', h: 20 }, { label: '8a', h: 15 }, { label: '10a', h: 25 },
-    { label: '12p', h: 40 }, { label: '2p', h: 50 }, { label: '4p', h: 60 },
-    { label: '5p', h: 90 }, { label: '6p', h: 95 }, { label: '7p', h: 85 },
-    { label: '8p', h: 70 }, { label: '9p', h: 45 }, { label: '11p', h: 20 },
-  ];
-  const barW = 18, gap = 6, maxH = 80;
-  const totalW = hours.length * (barW + gap);
-  return (
-    <div className="forecast-chart-wrap">
-      <svg width={totalW} height={maxH + 22} viewBox={`0 0 ${totalW} ${maxH + 22}`}>
-        {hours.map((h, i) => {
-          const x = i * (barW + gap);
-          const bh = (h.h / 100) * maxH;
-          const isPeak = h.h >= 80;
-          return (
-            <g key={i}>
-              <rect x={x} y={maxH - bh} width={barW} height={bh} rx={4}
-                fill={isPeak ? '#dc3240' : '#356668'} opacity={isPeak ? 0.85 : 0.55} />
-              <text x={x + barW / 2} y={maxH + 14} textAnchor="middle"
-                fontSize="8" fill="#7f8c8d" fontFamily="DM Sans">{h.label}</text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
 }
 
 /* countdown ring */
@@ -59,10 +36,31 @@ function CountdownRing({ minsLeft, total = 45 }) {
 export default function Live() {
   const { hostelId, hostelName, loading: hostelLoading, error: hostelError } = useHostel();
   const { machines, loading: machinesLoading } = useMachines(hostelId);
+  const { notifications, unreadCount, markAllRead, clearAll, checkMachineEvents, requestPermission } = useNotifications(hostelId);
+  const { ringing, alarmMachine, alarmType, stopAlarm, checkAlarm } = useAlarm();
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const param = searchParams.toString() ? `?${searchParams.toString()}` : '';
   const [now, setNow] = useState(Date.now());
+  const [showScanner, setShowScanner] = useState(false);
+  const userName = localStorage.getItem('userName') || '';
+
+  useEffect(() => { requestPermission(); }, [requestPermission]);
+  useEffect(() => { checkMachineEvents(machines, userName); }, [machines, userName, checkMachineEvents]);
+  useEffect(() => { checkAlarm(machines, userName); }, [machines, userName, checkAlarm]);
+
+  const handleQrScan = useCallback((decodedText) => {
+    setShowScanner(false);
+    // If the QR contains a full URL, navigate to it; otherwise treat as machine booking URL
+    try {
+      const url = new URL(decodedText);
+      window.location.href = url.href;
+    } catch {
+      // Not a URL — try navigating with hostel param
+      navigate(`/?hostel=${hostelId}`);
+    }
+  }, [navigate, hostelId]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -90,40 +88,21 @@ export default function Live() {
   return (
     <div className="app-container has-nav">
       {/* Header */}
-      <header className="header">
-        <div className="header-left">
-          <button className="header-icon-btn" aria-label="Menu">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          </button>
-          <h1 className="app-title">SpinLnk</h1>
-        </div>
-        <div className="header-right">
-          <div className="header-avatar">
-            {(localStorage.getItem('userName') || 'U').charAt(0).toUpperCase()}
-          </div>
-        </div>
+      <header className="header" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <img src={spinlnkLogo} alt="SpinLnk" className="header-logo-img" />
+        <button className="notif-bell" onClick={() => setShowNotifPanel(true)}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+        </button>
       </header>
 
+      {showNotifPanel && (
+        <NotificationPanel notifications={notifications} unreadCount={unreadCount} onMarkAllRead={markAllRead} onClearAll={clearAll} onClose={() => setShowNotifPanel(false)} />
+      )}
+
+      {ringing && <AlarmOverlay machineName={alarmMachine} alarmType={alarmType} onStop={stopAlarm} />}
+
       <div className="content">
-        {/* Greeting */}
-        <div className="live-greeting">
-          <h2>Hey <span role="img" aria-label="wave">&#x1F44B;</span></h2>
-          <p>Which machine do you need?</p>
-        </div>
-
-        {/* Alert banner */}
-        <div className="live-alert">
-          <span className="live-alert-icon">&#x26C8;&#xFE0F;</span>
-          <span>Rainy day ahead &mdash; expect higher dryer demand this evening.</span>
-        </div>
-
-        {/* Usage Forecast */}
-        <div className="forecast-card">
-          <p className="forecast-label">USAGE FORECAST</p>
-          <p className="forecast-detail"><strong>Busiest hours:</strong> 5 PM &ndash; 8 PM</p>
-          <p className="forecast-detail"><strong>Free Times:</strong> 8 AM &ndash; 11 AM</p>
-          <UsageForecastChart />
-        </div>
 
         {machines.length === 0 ? (
           <p className="empty-state">No machines set up yet.</p>
@@ -158,9 +137,9 @@ export default function Live() {
                     <h3 className="live-machine-name">{m.name}</h3>
                     <p className="live-machine-sub">Available immediately</p>
                   </div>
-                  <span className="machine-emoji-lg">&#x1FAE7;</span>
+                  <span className="machine-emoji-lg"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="14" r="5"/><path d="M9.5 13c1-.8 2.5-.8 5 0"/><line x1="6" y1="6" x2="6" y2="6.01"/><line x1="10" y1="6" x2="18" y2="6"/></svg></span>
                 </div>
-                <button className="btn btn-scan" disabled>
+                <button className="btn btn-scan" onClick={() => setShowScanner(true)}>
                   Scan QR to Book &rarr;
                 </button>
               </div>
@@ -177,14 +156,21 @@ export default function Live() {
         )}
       </div>
 
+      {showScanner && (
+        <QrScannerModal onScan={handleQrScan} onClose={() => setShowScanner(false)} />
+      )}
+
       {/* Bottom nav */}
       <nav className="bottom-nav">
         <button className="nav-item active" onClick={() => navigate(`/queue${param}`)}>
-          <span className="nav-icon">&#x1F4E1;</span>
+          <span className="nav-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="2" strokeLinecap="round"><path d="M1 12a11 11 0 0122 0"/><path d="M5 12a7 7 0 0114 0"/><path d="M9 12a3 3 0 016 0"/><circle cx="12" cy="12" r="1" fill="#3cc1a2"/></svg></span>
           <span className="nav-label">Live</span>
         </button>
+        <button className="nav-center-btn" onClick={() => navigate(`/queue${param}`)}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="14" r="5"/><path d="M9.5 13c1-.8 2.5-.8 5 0"/><line x1="6" y1="6" x2="6" y2="6.01"/><line x1="10" y1="6" x2="18" y2="6"/></svg>
+        </button>
         <button className="nav-item" onClick={() => navigate(`/join${param}`)}>
-          <span className="nav-icon">&#x270B;</span>
+          <span className="nav-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="#3cc1a2" stroke="#3cc1a2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></span>
           <span className="nav-label">Join</span>
         </button>
       </nav>

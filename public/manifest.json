@@ -1,0 +1,13 @@
+{
+  "name": "SpinLnk",
+  "short_name": "SpinLnk",
+  "description": "Smart laundry management for hostels",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3cc1a2",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

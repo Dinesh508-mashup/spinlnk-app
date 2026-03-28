@@ -6,7 +6,7 @@ export default function useMachines(hostelId) {
   const [loading, setLoading] = useState(true);
 
   const fetch = useCallback(async () => {
-    if (!hostelId) return;
+    if (!hostelId) { setLoading(false); return; }
     try {
       const data = await getMachines(hostelId);
       // Auto-free expired machines

@@ -27,33 +27,18 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+  background: linear-gradient(180deg, #ffffff 0%, #e0f5ef 35%, #7dd4b8 75%, #3cc1a2 100%);
 }
 
 .header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: var(--card);
-  border-bottom: 1px solid #e8edf1;
+  padding: 16px 20px 10px;
+  background: transparent;
 }
-
-.header-left { display: flex; align-items: center; gap: 10px; }
-.header-right { display: flex; align-items: center; gap: 14px; }
-.header-icon-btn {
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: var(--text-light);
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.logo-icon { font-size: 28px; }
-.app-title { font-size: 20px; font-weight: 800; color: var(--primary); }
-.app-subtitle { font-size: 12px; color: var(--text-light); font-weight: 500; }
+.header-logo-img { height: 120px; width: 200px; object-fit: cover; object-position: 10% center; margin: -35px 0 -35px -30px; }
+.header-hostel-name { font-size: 14px; font-weight: 600; color: var(--text-light); }
 
 .content { padding: 16px 20px; flex: 1; }
 .has-nav { padding-bottom: 70px; }
@@ -77,10 +62,10 @@ body {
   transition: opacity 0.15s;
 }
 .btn:active { opacity: 0.85; }
-.btn-book, .btn-start, .btn-join, .btn-login, .btn-add { background: var(--primary); color: white; }
-.btn-start-wash { background: var(--coral); color: white; }
+.btn-book, .btn-start, .btn-join, .btn-login, .btn-add { background: #3cc1a2; color: white; }
+.btn-start-wash { background: #3cc1a2; color: white; }
 .btn-secondary { background: #e8edf1; color: var(--text); }
-.btn-moved { background: var(--primary); color: white; }
+.btn-moved { background: #3cc1a2; color: white; }
 .btn-cancel, .btn-leave { background: transparent; color: var(--red); border: 1px solid var(--red); }
 .btn-done-early { background: transparent; color: var(--text); border: 1px solid #ccc; }
 
@@ -155,8 +140,35 @@ body {
 .modal-content input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 15px; outline: none; }
 .modal-content input:focus { border-color: var(--primary); }
 
-.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; display: flex; background: var(--card); border-top: 1px solid #e8edf1; z-index: 50; }
-.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px; border: none; background: none; color: var(--text-light); font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
-.nav-item.active { color: var(--primary); }
-.nav-icon { font-size: 20px; }
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 430px; display: flex; align-items: flex-end;
+  justify-content: space-around; z-index: 50; height: 72px;
+  background: transparent; pointer-events: none;
+}
+.bottom-nav::before {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 64px;
+  background: #fff; border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+  mask: radial-gradient(circle 34px at 50% 0, transparent 98%, black 100%);
+  -webkit-mask: radial-gradient(circle 34px at 50% 0, transparent 98%, black 100%);
+  pointer-events: auto;
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 10px 0 8px; border: none; background: none; color: var(--text-light);
+  font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  position: relative; z-index: 2; pointer-events: auto;
+}
+.nav-item.active { color: #3cc1a2; }
+.nav-icon { font-size: 20px; display: flex; align-items: center; justify-content: center; }
 .nav-label { margin-top: 2px; font-weight: 600; }
+.nav-center-btn {
+  width: 56px; height: 56px; border-radius: 50%; border: none;
+  background: #3cc1a2; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative; z-index: 3; pointer-events: auto;
+  margin-bottom: 20px; box-shadow: 0 4px 16px rgba(60,193,162,0.4);
+  transition: transform 0.15s;
+}
+.nav-center-btn:active { transform: scale(0.92); }
+.nav-center-btn svg { filter: brightness(0) invert(1); }

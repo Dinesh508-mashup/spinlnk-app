@@ -74,6 +74,10 @@ export async function clearQueue(hostelId, machineKey) {
 
 // ===== Wash History =====
 export async function getWashHistory(hostelId) {
+  // Auto-delete records older than 12 hours
+  const cutoff = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
+  await supabase.from('wash_history').delete().eq('hostel_id', hostelId).lt('started_at', cutoff);
+
   const { data, error } = await supabase.from('wash_history').select('*').eq('hostel_id', hostelId).order('started_at', { ascending: false }).limit(50);
   if (error) throw error;
   return data || [];

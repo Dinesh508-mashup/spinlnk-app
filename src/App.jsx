@@ -4,6 +4,7 @@ import LineUp from './pages/LineUp';
 import Live from './pages/Live';
 import Join from './pages/Join';
 import Admin from './pages/Admin';
+import SuperAdmin from './pages/SuperAdmin';
 import './App.css';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/join" element={<Join />} />
         {/* Admin */}
         <Route path="/admin" element={<Admin />} />
+        <Route path="/super-admin" element={<SuperAdmin />} />
       </Routes>
     </BrowserRouter>
   );

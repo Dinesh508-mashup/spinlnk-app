@@ -64,7 +64,7 @@
 .btn-scan {
   display: block; width: 100%; padding: 12px; border: none; border-radius: 12px;
   font-size: 14px; font-weight: 700; cursor: default; margin-top: 12px;
-  background: #356668; color: #fff; opacity: 0.85;
+  background: #3cc1a2; color: #fff; opacity: 1; cursor: pointer;
   font-family: 'DM Sans', sans-serif;
 }
 
@@ -137,7 +137,7 @@
 .btn-join-queue {
   display: block; width: 100%; padding: 13px; border: none; border-radius: 12px;
   font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 6px;
-  background: #356668; color: #fff;
+  background: #3cc1a2; color: #fff;
   font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
 }
 .btn-join-queue:active { opacity: 0.85; }
@@ -200,3 +200,32 @@
 .slot-info { flex: 1; }
 .slot-time { display: block; font-weight: 600; font-size: 14px; }
 .slot-detail { font-size: 12px; color: var(--text-light); }
+
+/* ===== QR Scanner Modal ===== */
+.qr-scanner-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.qr-scanner-modal {
+  background: var(--card); border-radius: var(--radius);
+  width: 90%; max-width: 380px; padding: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.qr-scanner-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px;
+}
+.qr-scanner-header h3 { font-size: 16px; font-weight: 700; }
+.qr-close-btn {
+  border: none; background: none; font-size: 24px;
+  cursor: pointer; color: var(--text-light); line-height: 1;
+}
+.qr-reader-container { border-radius: 12px; overflow: hidden; }
+.qr-scanner-hint {
+  text-align: center; font-size: 12px; color: var(--text-light);
+  margin-top: 12px;
+}
+.qr-scanner-error {
+  text-align: center; color: var(--red); padding: 24px 0;
+}

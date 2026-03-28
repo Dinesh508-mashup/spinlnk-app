@@ -97,6 +97,48 @@
 }
 .custom-value { font-size: 20px; font-weight: 700; min-width: 80px; text-align: center; }
 
+/* ===== Usage Insights ===== */
+.insights-section { margin-top: 24px; }
+.insights-title { font-size: 18px; font-weight: 800; margin-bottom: 12px; }
+.insights-subtitle { font-size: 15px; font-weight: 700; margin: 16px 0 10px; }
+
+.insights-card {
+  background: var(--card); border-radius: var(--radius); padding: 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+.insights-label { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; color: var(--text-light); margin-bottom: 12px; }
+
+.insights-chart {
+  display: flex; align-items: flex-end; gap: 8px; height: 80px;
+}
+.insights-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
+.insights-bar {
+  width: 100%; border-radius: 4px 4px 0 0; background: #3cc1a2; opacity: 0.6;
+  transition: height 0.3s;
+}
+.insights-bar.peak { background: #e74c3c; opacity: 0.8; }
+.insights-bar-label { font-size: 10px; color: var(--text-light); margin-top: 4px; font-weight: 600; }
+
+.insights-slots { display: flex; gap: 10px; }
+.insights-slot {
+  flex: 1; display: flex; align-items: center; gap: 10px;
+  background: var(--card); border-radius: var(--radius); padding: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.insights-slot strong { font-size: 14px; display: block; }
+.insights-slot p { font-size: 12px; color: var(--text-light); margin: 2px 0 0; }
+.slot-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.slot-dot.morning { background: #f59e0b; }
+.slot-dot.night { background: #6366f1; }
+
+.insights-tip {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border-radius: var(--radius); padding: 14px;
+  margin-top: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  font-size: 13px; color: var(--text-light);
+}
+.tip-icon { font-size: 18px; }
+
 /* ===== Start Wash Full Screen ===== */
 .start-wash-machine-icon {
   text-align: center;
@@ -226,6 +268,9 @@
 .lineup-queue-pos { font-weight: 700; color: var(--primary); font-size: 14px; }
 .lineup-queue-empty {
   font-size: 13px; color: var(--text-light); padding: 6px 0; text-align: center;
+}
+.lineup-queue-full {
+  font-size: 13px; color: var(--red); font-weight: 600; padding: 10px 0; text-align: center;
 }
 
 /* ===== Snooze / Running Late ===== */

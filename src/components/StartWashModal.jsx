@@ -30,7 +30,7 @@ export default function StartWashModal({ machine, onStart, onClose }) {
   return (
     <div className="fullscreen-modal">
       <div className="fullscreen-modal-inner">
-        <div className="start-wash-machine-icon">🧺</div>
+        <div className="start-wash-machine-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="14" r="5"/><path d="M9.5 13c1-.8 2.5-.8 5 0"/><line x1="6" y1="6" x2="6" y2="6.01"/><line x1="10" y1="6" x2="18" y2="6"/></svg></div>
         <h2>{machine.name} is yours 🤙</h2>
 
         <label>YOUR NAME</label>

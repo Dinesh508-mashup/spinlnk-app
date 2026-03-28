@@ -2,8 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useHostel from '../hooks/useHostel';
 import useMachines from '../hooks/useMachines';
-import { getWashHistory, addWashHistory } from '../lib/supabase';
+import useNotifications from '../hooks/useNotifications';
+import useAlarm from '../hooks/useAlarm';
+import NotificationPanel from '../components/NotificationPanel';
+import AlarmOverlay from '../components/AlarmOverlay';
+import { getWashHistory, addWashHistory, joinQueue, leaveQueue } from '../lib/supabase';
+import spinlnkLogo from '../assets/spinlnk-logo.png';
 import '../styles/Home.css';
+import '../styles/Notifications.css';
+import '../styles/Alarm.css';
 
 const RING_RADIUS = 76;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
@@ -22,8 +29,16 @@ function formatTime(endTime) {
 
 export default function LineUp() {
   const { hostelId, hostelName, loading: hostelLoading, error: hostelError } = useHostel();
-  const { machines, loading: machinesLoading, freeMachine, extendTime, verifyAccessCode } = useMachines(hostelId);
+  const { machines, loading: machinesLoading, freeMachine, extendTime, verifyAccessCode, refresh } = useMachines(hostelId);
+  const { notifications, unreadCount, markAllRead, clearAll, checkMachineEvents, requestPermission } = useNotifications(hostelId);
+  const { ringing, alarmMachine, alarmType, stopAlarm, checkAlarm } = useAlarm();
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [toast, setToast] = useState('');
+  const userName = localStorage.getItem('userName') || '';
+
+  useEffect(() => { requestPermission(); }, [requestPermission]);
+  useEffect(() => { checkMachineEvents(machines, userName); }, [machines, userName, checkMachineEvents]);
+  useEffect(() => { checkAlarm(machines, userName); }, [machines, userName, checkAlarm]);
   const [codePrompt, setCodePrompt] = useState(null);
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState('');
@@ -32,6 +47,45 @@ export default function LineUp() {
   const [history, setHistory] = useState([]);
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
+  const handleJoinQueue = async (machineKey) => {
+    if (!userName) { showToast('Set your name first by booking a machine.'); return; }
+    try {
+      const queue = await joinQueue(hostelId, machineKey, userName, localStorage.getItem('userRoom') || '');
+      const pos = queue.findIndex(q => q.name === userName) + 1;
+      showToast(`You're #${pos} in queue for Machine ${machineKey}!`);
+      refresh();
+    } catch (e) {
+      showToast('Failed to join queue: ' + (e.message || ''));
+    }
+  };
+
+  const handleLeaveQueue = async (machineKey) => {
+    try {
+      await leaveQueue(hostelId, machineKey, userName);
+      showToast('You left the queue.');
+      refresh();
+    } catch (e) {
+      showToast('Failed to leave queue: ' + (e.message || ''));
+    }
+  };
+
+  // Notify queue members before freeing machine
+  const notifyQueueAndFree = async (machineKey) => {
+    const machine = machines.find(m => m.machine_key === machineKey);
+    const queue = machine?.queue_members || [];
+    if (queue.length > 0) {
+      // Send in-app notification to all queue members
+      // They'll see it when their page refreshes and detects the machine is free
+      // Store a flag so the alarm hook picks it up on next check
+      localStorage.setItem(`spinlnk_queue_alert_${hostelId}_${machineKey}`, JSON.stringify({
+        machineName: machine.name,
+        queueMembers: queue.map(q => q.name),
+        freedAt: Date.now(),
+      }));
+    }
+    await freeMachine(machineKey);
+  };
+
   const handleDoneEarly = (machineKey) => {
     const machine = machines.find(m => m.machine_key === machineKey);
     if (machine && machine.access_code) {
@@ -39,7 +93,7 @@ export default function LineUp() {
       setCodeInput('');
       setCodeError('');
     } else {
-      freeMachine(machineKey);
+      notifyQueueAndFree(machineKey);
     }
   };
 
@@ -72,7 +126,7 @@ export default function LineUp() {
         started_at: new Date().toISOString(),
       });
     }
-    await freeMachine(movedPrompt.machineKey);
+    await notifyQueueAndFree(movedPrompt.machineKey);
     setMovedPrompt(null);
     showToast(`${movedName.trim()} moved the clothes`);
     getWashHistory(hostelId).then(setHistory).catch(() => {});
@@ -81,7 +135,7 @@ export default function LineUp() {
   const handleCodeSubmit = () => {
     if (!codePrompt) return;
     if (verifyAccessCode(codePrompt.machineKey, codeInput)) {
-      freeMachine(codePrompt.machineKey);
+      notifyQueueAndFree(codePrompt.machineKey);
       setCodePrompt(null);
       showToast('Machine freed!');
     } else {
@@ -110,15 +164,19 @@ export default function LineUp() {
 
   return (
     <div className="app-container has-nav">
-      <header className="header">
-        <div className="header-left">
-          <span className="logo-icon">📋</span>
-          <div>
-            <h1 className="app-title">SpinLnk</h1>
-            <p className="app-subtitle">{hostelName}</p>
-          </div>
-        </div>
+      <header className="header" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <img src={spinlnkLogo} alt="SpinLnk" className="header-logo-img" />
+        <button className="notif-bell" onClick={() => setShowNotifPanel(true)}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
+        </button>
       </header>
+
+      {showNotifPanel && (
+        <NotificationPanel notifications={notifications} unreadCount={unreadCount} onMarkAllRead={markAllRead} onClearAll={clearAll} onClose={() => setShowNotifPanel(false)} />
+      )}
+
+      {ringing && <AlarmOverlay machineName={alarmMachine} alarmType={alarmType} onStop={stopAlarm} />}
 
       <div className="content">
         {machines.length === 0 ? (
@@ -215,6 +273,7 @@ export default function LineUp() {
                     ) : (
                       <p className="lineup-queue-empty">No one in queue yet</p>
                     )}
+
                   </div>
                 </div>
               );
@@ -232,7 +291,7 @@ export default function LineUp() {
                         <h3 className="machine-name">{m.name}</h3>
                         <p className="machine-sub">Available now</p>
                       </div>
-                      <span className="machine-emoji">🫧</span>
+                      <span className="machine-emoji"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="14" r="5"/><path d="M9.5 13c1-.8 2.5-.8 5 0"/><line x1="6" y1="6" x2="6" y2="6.01"/><line x1="10" y1="6" x2="18" y2="6"/></svg></span>
                     </div>
                   </div>
                 ))}
@@ -311,11 +370,14 @@ export default function LineUp() {
 
       <nav className="bottom-nav">
         <button className="nav-item" onClick={() => navigate(`/${param}`)}>
-          <span className="nav-icon">🏠</span>
+          <span className="nav-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" stroke="#e8594f" strokeWidth="2.5"/><path d="M12 2a10 10 0 0110 10" stroke="#3cc1a2" strokeWidth="3" strokeLinecap="round"/></svg></span>
           <span className="nav-label">Home</span>
         </button>
+        <button className="nav-center-btn" onClick={() => navigate(`/${param}`)}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="14" r="5"/><path d="M9.5 13c1-.8 2.5-.8 5 0"/><line x1="6" y1="6" x2="6" y2="6.01"/><line x1="10" y1="6" x2="18" y2="6"/></svg>
+        </button>
         <button className="nav-item active" onClick={() => navigate(`/lineup${param}`)}>
-          <span className="nav-icon">📋</span>
+          <span className="nav-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="#3cc1a2" stroke="none"><path d="M16 3.5a2.5 2.5 0 015 0 2.5 2.5 0 01-5 0zM9 5a2.5 2.5 0 015 0A2.5 2.5 0 019 5zM3 6.5a2 2 0 014 0 2 2 0 01-4 0zM14.5 10c-1.5 0-3-.5-4-1.5C9.5 9.5 8 10 6.5 10 4.5 10 2 11 2 13v1.5c0 .5.5 1 1 1h18c.5 0 1-.5 1-1V13c0-2-2.5-3-4.5-3z"/><path d="M5 18h14c.5 0 1 .5 1 1s-.5 1-1 1H5c-.5 0-1-.5-1-1s.5-1 1-1z"/></svg></span>
           <span className="nav-label">Line-Up</span>
         </button>
       </nav>
