@@ -116,6 +116,11 @@ export default function useAlarm() {
       if (audioCtxRef.current?.state === 'suspended') {
         audioCtxRef.current.resume();
       }
+      if (alarmCtxRef.current?.state === 'suspended') {
+        alarmCtxRef.current.resume();
+      }
+      // Connect amplified audio on first user gesture
+      connectAmplifiedAudio();
     };
 
     document.addEventListener('touchstart', activate, { once: false, passive: true });
@@ -127,7 +132,7 @@ export default function useAlarm() {
       document.removeEventListener('click', activate);
       document.removeEventListener('touchend', activate);
     };
-  }, []);
+  }, [connectAmplifiedAudio]);
 
   // ===== Initialize alarm audio elements =====
   const handleEnded = useCallback(() => {
@@ -157,12 +162,18 @@ export default function useAlarm() {
     pendingAlarmRef.current = null;
   }
 
+  // ===== Web Audio API amplified alarm =====
+  // Routes alarm audio through Web Audio API with GainNode to bypass silent/low volume
+  const alarmCtxRef = useRef(null);
+  const machineGainRef = useRef(null);
+  const queueGainRef = useRef(null);
+  const connectedRef = useRef(false);
+
   useEffect(() => {
     const machineAudio = new Audio(machineAlarmSound);
     const queueAudio = new Audio(queueAlarmSound);
     machineAudio.loop = false;
     queueAudio.loop = false;
-    // Preload on both
     machineAudio.preload = 'auto';
     queueAudio.preload = 'auto';
 
@@ -182,8 +193,43 @@ export default function useAlarm() {
       stopAudioContext();
       releaseWakeLock();
       if (timerCheckerRef.current) clearInterval(timerCheckerRef.current);
+      try { alarmCtxRef.current?.close(); } catch {}
     };
   }, [handleEnded, stopAudioContext, releaseWakeLock]);
+
+  // Connect audio elements to Web Audio API gain nodes (once, on first user interaction)
+  const connectAmplifiedAudio = useCallback(() => {
+    if (connectedRef.current) return;
+    const machine = machineAudioRef.current;
+    const queue = queueAudioRef.current;
+    if (!machine || !queue) return;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+      alarmCtxRef.current = ctx;
+
+      // Machine alarm — amplified
+      const machineSource = ctx.createMediaElementSource(machine);
+      const mGain = ctx.createGain();
+      mGain.gain.setValueAtTime(3.0, ctx.currentTime);
+      machineSource.connect(mGain);
+      mGain.connect(ctx.destination);
+      machineGainRef.current = mGain;
+
+      // Queue alarm — amplified
+      const queueSource = ctx.createMediaElementSource(queue);
+      const qGain = ctx.createGain();
+      qGain.gain.setValueAtTime(3.0, ctx.currentTime);
+      queueSource.connect(qGain);
+      qGain.connect(ctx.destination);
+      queueGainRef.current = qGain;
+
+      connectedRef.current = true;
+    } catch (e) {
+      console.warn('Could not set up amplified audio:', e);
+    }
+  }, []);
 
   // ===== Play alarm =====
   const playAlarm = useCallback((machineName, type) => {
@@ -201,15 +247,24 @@ export default function useAlarm() {
       audio.volume = 1.0;
       audio.currentTime = 0;
 
-      // Try playing — if blocked, use AudioContext to bridge
+      // Ensure amplified audio context is connected and resumed
+      connectAmplifiedAudio();
+      if (alarmCtxRef.current?.state === 'suspended') {
+        alarmCtxRef.current.resume();
+      }
+
+      // Crank gain to max on the active alarm
+      const gain = type === 'queue' ? queueGainRef.current : machineGainRef.current;
+      if (gain) {
+        gain.gain.setValueAtTime(3.0, alarmCtxRef.current.currentTime);
+      }
+
       const playPromise = audio.play();
       if (playPromise) {
         playPromise.catch(() => {
-          // Fallback: use Web Audio API to play
+          // Fallback — try again after resuming context
           try {
-            const ctx = audioCtxRef.current || new (window.AudioContext || window.webkitAudioContext)();
-            const source = ctx.createMediaElementSource(audio);
-            source.connect(ctx.destination);
+            if (alarmCtxRef.current) alarmCtxRef.current.resume();
             audio.play().catch(() => {});
           } catch {}
         });
@@ -221,11 +276,11 @@ export default function useAlarm() {
       machineName
     );
 
-    // Vibrate pattern for attention
+    // Aggressive vibration pattern — long pulses to get attention even on silent
     if (navigator.vibrate) {
-      navigator.vibrate([500, 200, 500, 200, 500, 200, 500]);
+      navigator.vibrate([1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000]);
     }
-  }, [ringing, updateMediaSession]);
+  }, [ringing, updateMediaSession, connectAmplifiedAudio]);
 
   // ===== Stop alarm (public) =====
   const stopAlarm = useCallback(() => {
