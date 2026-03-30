@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { insertTimerAlert } from '../lib/supabase';
 
 /*
   Lock-screen alarm system:
@@ -362,6 +363,12 @@ export default function useAlarm() {
       if (m.user_name?.toLowerCase() === lowerUser) {
         const timerId = `session_${m.machine_key}`;
         registerTimerWithSW(timerId, m.end_time, m.name || `Machine ${m.machine_key}`, 'session', m.hostel_id);
+        // Also register server-side push alert (only once per timer)
+        const serverTimerId = `server_session_${m.hostel_id}_${m.machine_key}`;
+        if (!registeredTimersRef.current.has(serverTimerId)) {
+          registeredTimersRef.current.add(serverTimerId);
+          insertTimerAlert(m.hostel_id, m.machine_key, m.name || `Machine ${m.machine_key}`, currentUserName, 'session', m.end_time);
+        }
       }
 
       const queue = m.queue_members || [];
@@ -372,6 +379,12 @@ export default function useAlarm() {
           : `${m.name} is free — you're #${qIdx + 1} in queue`;
         const timerId = `queue_${m.machine_key}_${lowerUser}`;
         registerTimerWithSW(timerId, m.end_time, label, 'queue', m.hostel_id);
+        // Also register server-side push alert for queue (only once per timer)
+        const serverTimerId = `server_queue_${m.hostel_id}_${m.machine_key}_${lowerUser}`;
+        if (!registeredTimersRef.current.has(serverTimerId)) {
+          registeredTimersRef.current.add(serverTimerId);
+          insertTimerAlert(m.hostel_id, m.machine_key, m.name || `Machine ${m.machine_key}`, currentUserName, 'queue', m.end_time);
+        }
       }
     }
 

@@ -87,3 +87,39 @@ export async function addWashHistory(hostelId, entry) {
   const { error } = await supabase.from('wash_history').insert({ hostel_id: hostelId, ...entry });
   if (error) throw error;
 }
+
+// ===== Timer Alerts (server-side push notifications) =====
+export async function insertTimerAlert(hostelId, machineKey, machineName, userName, alertType, alertAt) {
+  // alertAt should be a Date object or ISO string representing when the alert should fire
+  const alertAtISO = alertAt instanceof Date ? alertAt.toISOString() : new Date(alertAt).toISOString();
+
+  // Upsert: avoid duplicate alerts for same user + machine + type
+  // First delete any existing alert for this combo, then insert fresh
+  await supabase
+    .from('timer_alerts')
+    .delete()
+    .eq('hostel_id', hostelId)
+    .eq('machine_key', machineKey)
+    .eq('user_name', userName)
+    .eq('alert_type', alertType);
+
+  const { error } = await supabase.from('timer_alerts').insert({
+    hostel_id: hostelId,
+    machine_key: machineKey,
+    machine_name: machineName,
+    user_name: userName,
+    alert_type: alertType,
+    alert_at: alertAtISO,
+  });
+  if (error) console.error('Failed to insert timer alert:', error);
+}
+
+export async function deleteTimerAlert(hostelId, machineKey, userName) {
+  const { error } = await supabase
+    .from('timer_alerts')
+    .delete()
+    .eq('hostel_id', hostelId)
+    .eq('machine_key', machineKey)
+    .eq('user_name', userName);
+  if (error) console.error('Failed to delete timer alert:', error);
+}

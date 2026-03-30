@@ -9,6 +9,7 @@ import StartWashModal from '../components/StartWashModal';
 import NotificationPanel from '../components/NotificationPanel';
 import AlarmOverlay from '../components/AlarmOverlay';
 import { registerServiceWorker, subscribeToPush, pushBookingConfirmed } from '../lib/pushNotifications';
+import { insertTimerAlert } from '../lib/supabase';
 import spinlnkLogo from '../assets/spinlnk-logo.png';
 import '../styles/Home.css';
 import '../styles/Notifications.css';
@@ -51,6 +52,9 @@ export default function Home() {
     const mName = machine?.name || `Machine ${machineKey}`;
     notifyBookingConfirmed(mName, name, cycle, minutes);
     pushBookingConfirmed(hostelId, name, mName, cycle, minutes);
+    // Register server-side push alarm for when the session ends
+    const alertAt = new Date(Date.now() + minutes * 60 * 1000);
+    insertTimerAlert(hostelId, machineKey, mName, name, 'session', alertAt);
     setSelectedMachine(null);
   };
 
