@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import LineUp from './pages/LineUp';
@@ -6,6 +7,7 @@ import Join from './pages/Join';
 import Admin from './pages/Admin';
 import SuperAdmin from './pages/SuperAdmin';
 import LandingPage from './landing/LandingPage';
+import { registerServiceWorker } from './lib/pushNotifications';
 import './App.css';
 
 function RequireHostel({ children }) {
@@ -15,6 +17,9 @@ function RequireHostel({ children }) {
 }
 
 export default function App() {
+  // Register service worker globally so background timers work on every page
+  useEffect(() => { registerServiceWorker(); }, []);
+
   return (
     <BrowserRouter>
       <Routes>

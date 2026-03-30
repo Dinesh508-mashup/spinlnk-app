@@ -91,7 +91,7 @@ export async function pushSessionComplete(hostelId, userName, machineName, endTi
     title: 'Session Complete!',
     body: `Your session on ${machineName} ended at ${time}. Collect your clothes!`,
     tag: `session-${machineName}`,
-    url: `/?hostel=${hostelId}`,
+    url: `/home?hostel=${hostelId}`,
   });
 }
 
@@ -100,7 +100,7 @@ export async function pushMachineAvailable(hostelId, userName, machineName) {
     title: 'Your Turn!',
     body: `${machineName} is now free — go grab it before someone else does!`,
     tag: `available-${machineName}`,
-    url: `/?hostel=${hostelId}`,
+    url: `/home?hostel=${hostelId}`,
   });
 }
 
