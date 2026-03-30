@@ -6,7 +6,7 @@ export default function BottomNav({ hostelId, active }) {
 
   return (
     <nav className="bottom-nav">
-      <button className={`nav-item ${active === 'home' ? 'active' : ''}`} onClick={() => navigate(`/${param}`)}>
+      <button className={`nav-item ${active === 'home' ? 'active' : ''}`} onClick={() => navigate(`/home${param}`)}>
         <span className="nav-icon">🏠</span>
         <span className="nav-label">Home</span>
       </button>

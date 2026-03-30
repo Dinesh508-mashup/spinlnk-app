@@ -369,11 +369,11 @@ export default function LineUp() {
       {toast && <div className="toast show">{toast}</div>}
 
       <nav className="bottom-nav">
-        <button className="nav-item" onClick={() => navigate(`/${param}`)}>
+        <button className="nav-item" onClick={() => navigate(`/home${param}`)}>
           <span className="nav-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2" stroke="#e8594f" strokeWidth="2.5"/><path d="M12 2a10 10 0 0110 10" stroke="#3cc1a2" strokeWidth="3" strokeLinecap="round"/></svg></span>
           <span className="nav-label">Home</span>
         </button>
-        <button className="nav-center-btn" onClick={() => navigate(`/${param}`)}>
+        <button className="nav-center-btn" onClick={() => navigate(`/home${param}`)}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="3"/><circle cx="12" cy="14" r="5"/><path d="M9.5 13c1-.8 2.5-.8 5 0"/><line x1="6" y1="6" x2="6" y2="6.01"/><line x1="10" y1="6" x2="18" y2="6"/></svg>
         </button>
         <button className="nav-item active" onClick={() => navigate(`/lineup${param}`)}>

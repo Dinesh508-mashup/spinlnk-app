@@ -58,7 +58,7 @@ export default function Live() {
       window.location.href = url.href;
     } catch {
       // Not a URL — try navigating with hostel param
-      navigate(`/?hostel=${hostelId}`);
+      navigate(`/home?hostel=${hostelId}`);
     }
   }, [navigate, hostelId]);
 
