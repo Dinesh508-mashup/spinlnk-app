@@ -1,16 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import machineAlarmSound from '../assets/Machine alert song.mp3';
-import queueAlarmSound from '../assets/Room alert song.mp3';
 
 /*
-  Alarm system with background notification support:
+  Google Timer style alarm — Web Audio API synthesized beeps.
+  Works on locked phones because AudioContext stays alive (no MP3 files needed).
 
-  1. Web Audio API (AudioContext) — keeps audio session alive in background
-  2. Service Worker timers — fires system notifications even when phone is locked
-  3. Wake Lock API — prevents screen from sleeping
-  4. Media Session API — lock screen controls
-  5. Amplified audio via GainNode — overrides low/silent volume
-  6. System notifications — clickable, works on lock screen
+  - Synthesized triple-beep pattern (1200Hz sine wave, like Google Timer)
+  - Service Worker timers for background/lock screen notifications
+  - Wake Lock API to prevent sleep
+  - System notifications with action buttons
 */
 
 // Helper: send message to service worker
@@ -20,7 +17,7 @@ function swMessage(msg) {
   }
 }
 
-// Helper: show system notification from the page (works in background tabs)
+// Helper: show system notification
 async function showSystemNotification(title, body, type, hostelId) {
   if (Notification.permission !== 'granted') return;
   try {
@@ -56,30 +53,33 @@ export default function useAlarm() {
 
   // Refs
   const audioCtxRef = useRef(null);
-  const oscillatorRef = useRef(null);
-  const machineAudioRef = useRef(null);
-  const queueAudioRef = useRef(null);
-  const activeAudioRef = useRef(null);
+  const beepIntervalRef = useRef(null);
   const wakeLockRef = useRef(null);
-  const playCountRef = useRef(0);
   const prevMachinesRef = useRef(null);
   const timerCheckerRef = useRef(null);
   const pendingAlarmRef = useRef(null);
-  const userActivatedRef = useRef(false);
   const registeredTimersRef = useRef(new Set());
+  const autoStopRef = useRef(null);
 
-  // Amplified audio refs
-  const alarmCtxRef = useRef(null);
-  const machineGainRef = useRef(null);
-  const queueGainRef = useRef(null);
-  const connectedRef = useRef(false);
-
-  // ===== Web Audio API keep-alive =====
-  const startAudioContext = useCallback(() => {
-    if (audioCtxRef.current?.state === 'running') return;
-    try {
+  // ===== AudioContext (shared for keep-alive + alarm beeps) =====
+  const getAudioCtx = useCallback(() => {
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
       const AC = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AC();
+      audioCtxRef.current = new AC();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  // ===== Keep-alive: inaudible 1Hz tone keeps AudioContext running in background =====
+  const keepAliveOscRef = useRef(null);
+
+  const startKeepAlive = useCallback(() => {
+    if (keepAliveOscRef.current) return;
+    try {
+      const ctx = getAudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.frequency.setValueAtTime(1, ctx.currentTime);
@@ -87,16 +87,13 @@ export default function useAlarm() {
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start();
-      audioCtxRef.current = ctx;
-      oscillatorRef.current = osc;
-      if (ctx.state === 'suspended') ctx.resume();
+      keepAliveOscRef.current = osc;
     } catch {}
-  }, []);
+  }, [getAudioCtx]);
 
-  const stopAudioContext = useCallback(() => {
-    try { oscillatorRef.current?.stop(); audioCtxRef.current?.close(); } catch {}
-    audioCtxRef.current = null;
-    oscillatorRef.current = null;
+  const stopKeepAlive = useCallback(() => {
+    try { keepAliveOscRef.current?.stop(); } catch {}
+    keepAliveOscRef.current = null;
   }, []);
 
   // ===== Wake Lock =====
@@ -113,53 +110,53 @@ export default function useAlarm() {
     wakeLockRef.current = null;
   }, []);
 
-  // ===== Media Session =====
-  const updateMediaSession = useCallback((title, artist) => {
-    if (!('mediaSession' in navigator)) return;
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({ title, artist, album: 'SpinLnk' });
-      navigator.mediaSession.setActionHandler('pause', () => stopAlarmInternal());
-    } catch {}
-  }, []);
+  // ===== Google Timer Beep Synthesis =====
+  // Triple beep pattern: beep-beep-beep, pause, repeat
+  // Each beep: 1200Hz sine, 150ms, with quick attack/decay
+  const playBeepPattern = useCallback(() => {
+    const ctx = getAudioCtx();
 
-  // ===== Connect amplified audio (once on first user gesture) =====
-  const connectAmplifiedAudio = useCallback(() => {
-    if (connectedRef.current) return;
-    const machine = machineAudioRef.current;
-    const queue = queueAudioRef.current;
-    if (!machine || !queue) return;
-    try {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AC();
-      alarmCtxRef.current = ctx;
+    const playSingleBeep = (startTime) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(1200, startTime);
+      // Quick attack, sustain, quick decay
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.6, startTime + 0.01);
+      gain.gain.setValueAtTime(0.6, startTime + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + 0.16);
+    };
 
-      const ms = ctx.createMediaElementSource(machine);
-      const mg = ctx.createGain();
-      mg.gain.setValueAtTime(3.0, ctx.currentTime);
-      ms.connect(mg);
-      mg.connect(ctx.destination);
-      machineGainRef.current = mg;
+    const playTripleBeep = () => {
+      const now = ctx.currentTime;
+      playSingleBeep(now);
+      playSingleBeep(now + 0.2);
+      playSingleBeep(now + 0.4);
+    };
 
-      const qs = ctx.createMediaElementSource(queue);
-      const qg = ctx.createGain();
-      qg.gain.setValueAtTime(3.0, ctx.currentTime);
-      qs.connect(qg);
-      qg.connect(ctx.destination);
-      queueGainRef.current = qg;
+    // Play immediately, then repeat every 1.5s
+    playTripleBeep();
+    beepIntervalRef.current = setInterval(playTripleBeep, 1500);
+  }, [getAudioCtx]);
 
-      connectedRef.current = true;
-    } catch (e) {
-      console.warn('Amplified audio setup failed:', e);
+  const stopBeeps = useCallback(() => {
+    if (beepIntervalRef.current) {
+      clearInterval(beepIntervalRef.current);
+      beepIntervalRef.current = null;
     }
   }, []);
 
-  // ===== User activation handler =====
+  // ===== User activation (required for AudioContext on mobile) =====
   useEffect(() => {
     const activate = () => {
-      userActivatedRef.current = true;
-      if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume();
-      if (alarmCtxRef.current?.state === 'suspended') alarmCtxRef.current.resume();
-      connectAmplifiedAudio();
+      if (audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
     };
     document.addEventListener('touchstart', activate, { passive: true });
     document.addEventListener('click', activate, { passive: true });
@@ -167,60 +164,34 @@ export default function useAlarm() {
       document.removeEventListener('touchstart', activate);
       document.removeEventListener('click', activate);
     };
-  }, [connectAmplifiedAudio]);
-
-  // ===== Audio elements init =====
-  const handleEnded = useCallback(() => {
-    playCountRef.current += 1;
-    if (playCountRef.current < 3) {
-      const audio = activeAudioRef.current;
-      if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
-    } else {
-      stopAlarmInternal();
-    }
   }, []);
 
+  // ===== Stop alarm internal =====
   function stopAlarmInternal() {
-    if (activeAudioRef.current) {
-      activeAudioRef.current.pause();
-      activeAudioRef.current.currentTime = 0;
-    }
-    activeAudioRef.current = null;
-    playCountRef.current = 0;
+    stopBeeps();
+    if (autoStopRef.current) { clearTimeout(autoStopRef.current); autoStopRef.current = null; }
     setRinging(false);
     setAlarmMachine(null);
     setAlarmType(null);
     pendingAlarmRef.current = null;
-    // Tell SW to close notification
     swMessage({ type: 'STOP_ALARM' });
-    // Stop vibration
     if (navigator.vibrate) navigator.vibrate(0);
   }
 
+  // ===== Cleanup on unmount =====
   useEffect(() => {
-    const ma = new Audio(machineAlarmSound);
-    const qa = new Audio(queueAlarmSound);
-    ma.loop = false; qa.loop = false;
-    ma.preload = 'auto'; qa.preload = 'auto';
-    machineAudioRef.current = ma;
-    queueAudioRef.current = qa;
-    ma.addEventListener('ended', handleEnded);
-    qa.addEventListener('ended', handleEnded);
-
     return () => {
-      ma.removeEventListener('ended', handleEnded);
-      qa.removeEventListener('ended', handleEnded);
-      ma.pause(); qa.pause();
-      ma.src = ''; qa.src = '';
-      stopAudioContext();
+      stopBeeps();
+      stopKeepAlive();
       releaseWakeLock();
       if (timerCheckerRef.current) clearInterval(timerCheckerRef.current);
-      try { alarmCtxRef.current?.close(); } catch {}
+      if (autoStopRef.current) clearTimeout(autoStopRef.current);
+      try { audioCtxRef.current?.close(); } catch {}
       swMessage({ type: 'CLEAR_ALL_TIMERS' });
     };
-  }, [handleEnded, stopAudioContext, releaseWakeLock]);
+  }, [stopBeeps, stopKeepAlive, releaseWakeLock]);
 
-  // ===== Listen for SW messages (alarm fired / stop from notification click) =====
+  // ===== Listen for SW messages =====
   useEffect(() => {
     const handler = (event) => {
       const { type, data } = event.data || {};
@@ -228,84 +199,51 @@ export default function useAlarm() {
         stopAlarmInternal();
       }
       if (type === 'ALARM_FIRED' && data) {
-        // SW timer expired — fire in-app alarm
-        playAlarmDirect(data.machineName, data.alarmType);
+        fireAlarm(data.machineName, data.alarmType, data.hostelId);
       }
     };
     navigator.serviceWorker?.addEventListener('message', handler);
     return () => navigator.serviceWorker?.removeEventListener('message', handler);
   }, []);
 
-  // Direct play without ringing guard (called from SW message)
-  function playAlarmDirect(machineName, type) {
-    if (activeAudioRef.current) return; // already playing
-    playCountRef.current = 0;
+  // ===== Core alarm trigger (used by both playAlarm and SW message) =====
+  function fireAlarm(machineName, type, hostelId) {
+    if (ringing || beepIntervalRef.current) return;
+
     setRinging(true);
     setAlarmMachine(machineName);
     setAlarmType(type);
 
-    const audio = type === 'queue' ? queueAudioRef.current : machineAudioRef.current;
-    activeAudioRef.current = audio;
-    if (audio) {
-      audio.volume = 1.0;
-      audio.currentTime = 0;
-      connectAmplifiedAudio();
-      if (alarmCtxRef.current?.state === 'suspended') alarmCtxRef.current.resume();
-      const gain = type === 'queue' ? queueGainRef.current : machineGainRef.current;
-      if (gain && alarmCtxRef.current) gain.gain.setValueAtTime(3.0, alarmCtxRef.current.currentTime);
-      audio.play().catch(() => {});
+    // Start the Google Timer beeps
+    playBeepPattern();
+
+    // Vibrate aggressively
+    if (navigator.vibrate) {
+      navigator.vibrate([1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000]);
     }
-    updateMediaSession(type === 'queue' ? 'Your Turn!' : "Time's Up!", machineName);
-    if (navigator.vibrate) navigator.vibrate([1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000]);
+
+    // Auto-stop after 30 seconds if user doesn't dismiss
+    autoStopRef.current = setTimeout(() => stopAlarmInternal(), 30000);
   }
 
-  // ===== Play alarm =====
+  // ===== Play alarm (public, called from checkAlarm) =====
   const playAlarm = useCallback((machineName, type, hostelId) => {
     if (ringing) return;
 
-    playCountRef.current = 0;
-    setRinging(true);
-    setAlarmMachine(machineName);
-    setAlarmType(type);
+    fireAlarm(machineName, type, hostelId);
 
-    const audio = type === 'queue' ? queueAudioRef.current : machineAudioRef.current;
-    activeAudioRef.current = audio;
-
-    if (audio) {
-      audio.volume = 1.0;
-      audio.currentTime = 0;
-      connectAmplifiedAudio();
-      if (alarmCtxRef.current?.state === 'suspended') alarmCtxRef.current.resume();
-      const gain = type === 'queue' ? queueGainRef.current : machineGainRef.current;
-      if (gain && alarmCtxRef.current) gain.gain.setValueAtTime(3.0, alarmCtxRef.current.currentTime);
-      audio.play().catch(() => {
-        try { if (alarmCtxRef.current) alarmCtxRef.current.resume(); audio.play().catch(() => {}); } catch {}
-      });
-    }
-
-    updateMediaSession(
-      type === 'queue' ? 'Your Turn!' : "Time's Up!",
-      machineName
-    );
-
-    // System notification (visible on lock screen, clickable)
+    // Show system notification (visible on lock screen)
     const title = type === 'queue' ? 'Your Turn!' : "Time's Up!";
     const body = type === 'queue'
       ? `${machineName} — Go grab the machine now!`
       : `${machineName} has finished. Collect your clothes!`;
     showSystemNotification(title, body, type, hostelId);
-
-    // Aggressive vibration
-    if (navigator.vibrate) {
-      navigator.vibrate([1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000]);
-    }
-  }, [ringing, updateMediaSession, connectAmplifiedAudio]);
+  }, [ringing]);
 
   // ===== Stop alarm (public) =====
   const stopAlarm = useCallback(() => {
     stopAlarmInternal();
-    updateMediaSession('SpinLnk Timer', 'Monitoring your laundry');
-  }, [updateMediaSession]);
+  }, []);
 
   // ===== Register timer with Service Worker =====
   const registerTimerWithSW = useCallback((timerId, endTime, machineName, alarmType, hostelId) => {
@@ -317,7 +255,7 @@ export default function useAlarm() {
     });
   }, []);
 
-  // ===== In-tab timer checker (backup for when SW timer doesn't fire) =====
+  // ===== In-tab timer checker (backup) =====
   const setupTimerChecker = useCallback((machines, currentUserName) => {
     if (timerCheckerRef.current) clearInterval(timerCheckerRef.current);
     if (!machines || !currentUserName) return;
@@ -385,13 +323,11 @@ export default function useAlarm() {
     for (const m of machines) {
       if (m.status !== 'in-use' || !m.end_time || now >= m.end_time) continue;
 
-      // Register for machine owner
       if (m.user_name?.toLowerCase() === lowerUser) {
         const timerId = `session_${m.machine_key}`;
         registerTimerWithSW(timerId, m.end_time, m.name || `Machine ${m.machine_key}`, 'session', m.hostel_id);
       }
 
-      // Register for queue members
       const queue = m.queue_members || [];
       const qIdx = queue.findIndex(q => q.name?.toLowerCase() === lowerUser);
       if (qIdx >= 0) {
@@ -403,15 +339,14 @@ export default function useAlarm() {
       }
     }
 
-    // Start/stop keep-alive layers
+    // Start/stop keep-alive
     if ((hasActiveBooking || isInAnyQueue) && !ringing) {
-      startAudioContext();
+      startKeepAlive();
       requestWakeLock();
-      updateMediaSession('SpinLnk Timer', 'Monitoring your laundry');
       setKeepAliveActive(true);
       setupTimerChecker(machines, currentUserName);
     } else if (!hasActiveBooking && !isInAnyQueue && !ringing) {
-      stopAudioContext();
+      stopKeepAlive();
       releaseWakeLock();
       setKeepAliveActive(false);
       if (timerCheckerRef.current) {
@@ -451,7 +386,6 @@ export default function useAlarm() {
       const nowFree = m.status === 'free' || (m.status === 'in-use' && m.end_time && now >= m.end_time);
       if (!(wasInUse && nowFree)) continue;
 
-      // Clear SW timer since it fired
       swMessage({ type: 'CLEAR_TIMER', data: { timerId: `session_${m.machine_key}` } });
       registeredTimersRef.current.delete(`session_${m.machine_key}`);
 
@@ -471,7 +405,7 @@ export default function useAlarm() {
         return;
       }
     }
-  }, [playAlarm, ringing, startAudioContext, stopAudioContext, requestWakeLock, releaseWakeLock, updateMediaSession, setupTimerChecker, registerTimerWithSW]);
+  }, [playAlarm, ringing, startKeepAlive, stopKeepAlive, requestWakeLock, releaseWakeLock, setupTimerChecker, registerTimerWithSW]);
 
   return { ringing, alarmMachine, alarmType, keepAliveActive, stopAlarm, checkAlarm };
 }
