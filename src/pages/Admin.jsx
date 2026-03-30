@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getHostel, createHostel, getMachines, addMachine, deleteMachine, getWashHistory, updateHostelQR } from '../lib/supabase';
+import { getHostel, getMachines, addMachine, deleteMachine, getWashHistory, updateHostelQR } from '../lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
 import spinlnkLogo from '../assets/spinlnk-logo.png';
 import '../styles/Admin.css';
@@ -64,13 +64,12 @@ export default function Admin() {
 
     try {
       const hostel = await getHostel(normalizedId);
-      if (hostel) {
-        if (hostel.password !== password) { showToast('Invalid password.'); return; }
-        setHostelName(hostel.name);
-      } else {
-        await createHostel(normalizedId, inputId, password);
-        setHostelName(inputId);
+      if (!hostel) {
+        showToast('Hostel not found. Ask Super Admin to create it first.');
+        return;
       }
+      if (hostel.password !== password) { showToast('Invalid password.'); return; }
+      setHostelName(hostel.name);
       setHostelId(normalizedId);
       localStorage.setItem('spinlnk_admin_hostel', normalizedId);
       setScreen('panel');
