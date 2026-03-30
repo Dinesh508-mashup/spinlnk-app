@@ -1,14 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 /*
-  Google Timer style alarm — Web Audio API synthesized beeps.
-  Works on locked phones because AudioContext stays alive (no MP3 files needed).
+  Lock-screen alarm system:
 
-  - Synthesized triple-beep pattern (1200Hz sine wave, like Google Timer)
-  - Service Worker timers for background/lock screen notifications
-  - Wake Lock API to prevent sleep
-  - System notifications with action buttons
+  1. Silent <audio> loop — keeps Android Chrome process alive when screen is locked
+     (Web Audio API alone gets suspended; HTML5 Audio with MediaSession does not)
+  2. MediaSession API — shows "Timer Running" on lock screen, prevents OS from killing tab
+  3. Service Worker timer — fires system notification as backup when page is frozen
+  4. setInterval timer — fires when page is alive (kept alive by silent audio)
+  5. Google Timer beeps via Web Audio API — plays when timer expires
+  6. System notification — visible on lock screen, clickable
 */
+
+// 0.5s silent WAV as base64 data URI — tiny, loops forever to keep audio session alive
+const SILENT_AUDIO = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
 
 // Helper: send message to service worker
 function swMessage(msg) {
@@ -51,49 +56,55 @@ export default function useAlarm() {
   const [alarmType, setAlarmType] = useState(null);
   const [keepAliveActive, setKeepAliveActive] = useState(false);
 
-  // Refs
   const audioCtxRef = useRef(null);
   const beepIntervalRef = useRef(null);
+  const silentAudioRef = useRef(null);
   const wakeLockRef = useRef(null);
   const prevMachinesRef = useRef(null);
   const timerCheckerRef = useRef(null);
   const pendingAlarmRef = useRef(null);
   const registeredTimersRef = useRef(new Set());
   const autoStopRef = useRef(null);
+  const keepAliveStartedRef = useRef(false);
 
-  // ===== AudioContext (shared for keep-alive + alarm beeps) =====
-  const getAudioCtx = useCallback(() => {
-    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      audioCtxRef.current = new AC();
-    }
-    if (audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
-    return audioCtxRef.current;
+  // ===== Silent audio loop — keeps process alive on locked Android =====
+  const startSilentAudio = useCallback(() => {
+    if (keepAliveStartedRef.current) return;
+    try {
+      if (!silentAudioRef.current) {
+        const audio = new Audio(SILENT_AUDIO);
+        audio.loop = true;
+        audio.volume = 0.01; // near-silent but not zero (zero may be optimized away)
+        silentAudioRef.current = audio;
+      }
+      const playPromise = silentAudioRef.current.play();
+      if (playPromise) playPromise.catch(() => {});
+      keepAliveStartedRef.current = true;
+
+      // MediaSession — shows on lock screen, prevents OS from killing audio
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: 'Timer Running',
+          artist: 'SpinLnk',
+          album: 'Laundry Timer',
+        });
+        navigator.mediaSession.playbackState = 'playing';
+        navigator.mediaSession.setActionHandler('pause', null); // don't let user pause
+        navigator.mediaSession.setActionHandler('stop', null);
+      }
+    } catch {}
   }, []);
 
-  // ===== Keep-alive: inaudible 1Hz tone keeps AudioContext running in background =====
-  const keepAliveOscRef = useRef(null);
-
-  const startKeepAlive = useCallback(() => {
-    if (keepAliveOscRef.current) return;
+  const stopSilentAudio = useCallback(() => {
     try {
-      const ctx = getAudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.setValueAtTime(1, ctx.currentTime);
-      gain.gain.setValueAtTime(0.001, ctx.currentTime);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      keepAliveOscRef.current = osc;
+      silentAudioRef.current?.pause();
+      silentAudioRef.current = null;
     } catch {}
-  }, [getAudioCtx]);
-
-  const stopKeepAlive = useCallback(() => {
-    try { keepAliveOscRef.current?.stop(); } catch {}
-    keepAliveOscRef.current = null;
+    keepAliveStartedRef.current = false;
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = null;
+      navigator.mediaSession.playbackState = 'none';
+    }
   }, []);
 
   // ===== Wake Lock =====
@@ -110,9 +121,19 @@ export default function useAlarm() {
     wakeLockRef.current = null;
   }, []);
 
+  // ===== AudioContext for beeps =====
+  const getAudioCtx = useCallback(() => {
+    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioCtxRef.current = new AC();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  }, []);
+
   // ===== Google Timer Beep Synthesis =====
-  // Triple beep pattern: beep-beep-beep, pause, repeat
-  // Each beep: 1200Hz sine, 150ms, with quick attack/decay
   const playBeepPattern = useCallback(() => {
     const ctx = getAudioCtx();
 
@@ -121,7 +142,6 @@ export default function useAlarm() {
       const gain = ctx.createGain();
       osc.type = 'sine';
       osc.frequency.setValueAtTime(1200, startTime);
-      // Quick attack, sustain, quick decay
       gain.gain.setValueAtTime(0, startTime);
       gain.gain.linearRampToValueAtTime(0.6, startTime + 0.01);
       gain.gain.setValueAtTime(0.6, startTime + 0.12);
@@ -139,7 +159,6 @@ export default function useAlarm() {
       playSingleBeep(now + 0.4);
     };
 
-    // Play immediately, then repeat every 1.5s
     playTripleBeep();
     beepIntervalRef.current = setInterval(playTripleBeep, 1500);
   }, [getAudioCtx]);
@@ -151,11 +170,14 @@ export default function useAlarm() {
     }
   }, []);
 
-  // ===== User activation (required for AudioContext on mobile) =====
+  // ===== User activation (required for audio on mobile) =====
   useEffect(() => {
     const activate = () => {
-      if (audioCtxRef.current?.state === 'suspended') {
-        audioCtxRef.current.resume();
+      // Resume AudioContext if suspended
+      if (audioCtxRef.current?.state === 'suspended') audioCtxRef.current.resume();
+      // Restart silent audio if it was paused by the OS
+      if (keepAliveStartedRef.current && silentAudioRef.current?.paused) {
+        silentAudioRef.current.play().catch(() => {});
       }
     };
     document.addEventListener('touchstart', activate, { passive: true });
@@ -176,20 +198,28 @@ export default function useAlarm() {
     pendingAlarmRef.current = null;
     swMessage({ type: 'STOP_ALARM' });
     if (navigator.vibrate) navigator.vibrate(0);
+    // Update MediaSession to show alarm stopped
+    if ('mediaSession' in navigator && keepAliveStartedRef.current) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Timer Running',
+        artist: 'SpinLnk',
+        album: 'Laundry Timer',
+      });
+    }
   }
 
   // ===== Cleanup on unmount =====
   useEffect(() => {
     return () => {
       stopBeeps();
-      stopKeepAlive();
+      stopSilentAudio();
       releaseWakeLock();
       if (timerCheckerRef.current) clearInterval(timerCheckerRef.current);
       if (autoStopRef.current) clearTimeout(autoStopRef.current);
       try { audioCtxRef.current?.close(); } catch {}
       swMessage({ type: 'CLEAR_ALL_TIMERS' });
     };
-  }, [stopBeeps, stopKeepAlive, releaseWakeLock]);
+  }, [stopBeeps, stopSilentAudio, releaseWakeLock]);
 
   // ===== Listen for SW messages =====
   useEffect(() => {
@@ -206,7 +236,7 @@ export default function useAlarm() {
     return () => navigator.serviceWorker?.removeEventListener('message', handler);
   }, []);
 
-  // ===== Core alarm trigger (used by both playAlarm and SW message) =====
+  // ===== Core alarm trigger =====
   function fireAlarm(machineName, type, hostelId) {
     if (ringing || beepIntervalRef.current) return;
 
@@ -214,25 +244,30 @@ export default function useAlarm() {
     setAlarmMachine(machineName);
     setAlarmType(type);
 
-    // Start the Google Timer beeps
+    // Update MediaSession to show alarm
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: type === 'queue' ? 'Your Turn!' : "Time's Up!",
+        artist: machineName,
+        album: 'SpinLnk Alarm',
+      });
+    }
+
     playBeepPattern();
 
-    // Vibrate aggressively
     if (navigator.vibrate) {
       navigator.vibrate([1000, 300, 1000, 300, 1000, 300, 1000, 300, 1000]);
     }
 
-    // Auto-stop after 30 seconds if user doesn't dismiss
     autoStopRef.current = setTimeout(() => stopAlarmInternal(), 30000);
   }
 
-  // ===== Play alarm (public, called from checkAlarm) =====
+  // ===== Play alarm (public) =====
   const playAlarm = useCallback((machineName, type, hostelId) => {
     if (ringing) return;
 
     fireAlarm(machineName, type, hostelId);
 
-    // Show system notification (visible on lock screen)
     const title = type === 'queue' ? 'Your Turn!' : "Time's Up!";
     const body = type === 'queue'
       ? `${machineName} — Go grab the machine now!`
@@ -255,7 +290,7 @@ export default function useAlarm() {
     });
   }, []);
 
-  // ===== In-tab timer checker (backup) =====
+  // ===== In-tab timer checker =====
   const setupTimerChecker = useCallback((machines, currentUserName) => {
     if (timerCheckerRef.current) clearInterval(timerCheckerRef.current);
     if (!machines || !currentUserName) return;
@@ -291,6 +326,7 @@ export default function useAlarm() {
 
     if (targetEndTime) {
       pendingAlarmRef.current = { endTime: targetEndTime, name: targetMachineName, type: targetType, hostelId: targetHostelId };
+      // Check every 2 seconds — silent audio keeps this interval alive on locked screen
       timerCheckerRef.current = setInterval(() => {
         const pending = pendingAlarmRef.current;
         if (pending && Date.now() >= pending.endTime) {
@@ -299,7 +335,7 @@ export default function useAlarm() {
           playAlarm(pending.name, pending.type, pending.hostelId);
           pendingAlarmRef.current = null;
         }
-      }, 3000);
+      }, 2000);
     }
   }, [playAlarm]);
 
@@ -319,7 +355,7 @@ export default function useAlarm() {
       (m.queue_members || []).some(q => q.name?.toLowerCase() === lowerUser)
     );
 
-    // Register timers with Service Worker for background notifications
+    // Register timers with Service Worker (backup for when page is killed)
     for (const m of machines) {
       if (m.status !== 'in-use' || !m.end_time || now >= m.end_time) continue;
 
@@ -339,14 +375,14 @@ export default function useAlarm() {
       }
     }
 
-    // Start/stop keep-alive
+    // Start/stop keep-alive (silent audio + wake lock)
     if ((hasActiveBooking || isInAnyQueue) && !ringing) {
-      startKeepAlive();
+      startSilentAudio();
       requestWakeLock();
       setKeepAliveActive(true);
       setupTimerChecker(machines, currentUserName);
     } else if (!hasActiveBooking && !isInAnyQueue && !ringing) {
-      stopKeepAlive();
+      stopSilentAudio();
       releaseWakeLock();
       setKeepAliveActive(false);
       if (timerCheckerRef.current) {
@@ -355,7 +391,7 @@ export default function useAlarm() {
       }
     }
 
-    // Check queue alert flags (from "I'm Done Early" / "I Moved Clothes")
+    // Check queue alert flags
     for (const m of machines) {
       const alertKey = `spinlnk_queue_alert_${m.hostel_id || ''}_${m.machine_key}`;
       const raw = localStorage.getItem(alertKey);
@@ -375,7 +411,6 @@ export default function useAlarm() {
       } catch { localStorage.removeItem(alertKey); }
     }
 
-    // Skip normal detection on first render
     if (!prev) return;
 
     for (const m of machines) {
@@ -405,7 +440,7 @@ export default function useAlarm() {
         return;
       }
     }
-  }, [playAlarm, ringing, startKeepAlive, stopKeepAlive, requestWakeLock, releaseWakeLock, setupTimerChecker, registerTimerWithSW]);
+  }, [playAlarm, ringing, startSilentAudio, stopSilentAudio, requestWakeLock, releaseWakeLock, setupTimerChecker, registerTimerWithSW]);
 
   return { ringing, alarmMachine, alarmType, keepAliveActive, stopAlarm, checkAlarm };
 }
