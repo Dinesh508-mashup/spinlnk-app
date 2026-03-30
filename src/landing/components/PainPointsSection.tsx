@@ -22,7 +22,7 @@ const PainPointsSection: React.FC = () => {
   }, []);
 
   return (
-    <section style={{ background: '#fff', padding: '90px 60px' }}>
+    <section style={{ background: '#fff', padding: '90px 40px' }}>
       <div ref={headerRef} className="reveal" style={{ textAlign: 'center', maxWidth: 580, margin: '0 auto 52px' }}>
         <div className="sec-label">/ Pain Points Solved</div>
         <div className="sec-eyebrow">The real problems</div>

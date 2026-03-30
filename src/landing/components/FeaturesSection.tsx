@@ -52,7 +52,7 @@ const FeaturesSection: React.FC = () => {
   }, []);
 
   return (
-    <section id="features" style={{ background: 'var(--light)', padding: '90px 60px' }}>
+    <section id="features" style={{ background: 'var(--light)', padding: '90px 40px' }}>
       <div ref={headerRef} className="reveal" style={{ textAlign: 'center', maxWidth: 600, margin: '0 auto 60px' }}>
         <div className="sec-label">/ How It Works</div>
         <div className="sec-eyebrow">We think ahead</div>
