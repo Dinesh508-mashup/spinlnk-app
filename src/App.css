@@ -141,9 +141,10 @@ body {
 .modal-content input:focus { border-color: var(--primary); }
 
 .bottom-nav {
-  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  position: fixed !important; bottom: 0 !important; top: auto !important;
+  left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 430px; display: flex; align-items: flex-end;
-  justify-content: space-around; z-index: 50; height: 72px;
+  justify-content: space-around; z-index: 9999; height: 72px;
   background: transparent; pointer-events: none;
 }
 .bottom-nav::before {
