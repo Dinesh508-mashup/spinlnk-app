@@ -193,9 +193,9 @@ export default function Admin() {
     qrImg.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
   };
 
-  const baseUrl = window.location.origin + '/';
-  const machineQrUrl = `${baseUrl}?hostel=${hostelId}`;
-  const roomQrUrl = `${baseUrl}queue?hostel=${hostelId}`;
+  const baseUrl = window.location.origin;
+  const machineQrUrl = `${baseUrl}/home?hostel=${hostelId}`;
+  const roomQrUrl = `${baseUrl}/queue?hostel=${hostelId}`;
 
   // Save QR URLs on QR screen
   useEffect(() => {
