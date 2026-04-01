@@ -12,7 +12,7 @@ import './App.css';
 
 function RequireHostel({ children }) {
   const hostelId = new URLSearchParams(window.location.search).get('hostel') || localStorage.getItem('spinlnk_hostel');
-  if (!hostelId) return <Navigate to="/" replace />;
+  if (!hostelId) return <Navigate to="/admin" replace />;
   return children;
 }
 
