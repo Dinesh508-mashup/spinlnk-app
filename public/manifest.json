@@ -3,6 +3,7 @@
   "short_name": "SpinLnk",
   "description": "Smart laundry management for hostels",
   "start_url": "/home",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3cc1a2",
