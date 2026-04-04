@@ -20,11 +20,12 @@ export default function SuperAdmin() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [creating, setCreating] = useState(false);
+  const [selectedHostel, setSelectedHostel] = useState(null);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   const fetchHostels = async () => {
-    const { data, error } = await supabase.from('hostels').select('id, hostel_name, login_id, admin_id, contact_number, created_at').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('hostels').select('*').order('created_at', { ascending: false });
     if (!error) setHostels(data || []);
   };
 
@@ -136,6 +137,9 @@ export default function SuperAdmin() {
     );
   }
 
+  // ===== HOSTEL DETAIL VIEW =====
+  if (selectedHostel) return <HostelDetailView />;
+
   // ===== MAIN PANEL =====
   return (
     <div className="admin-container">
@@ -233,24 +237,24 @@ export default function SuperAdmin() {
             <p className="sa-empty">No hostels created yet.</p>
           ) : (
             hostels.map(h => (
-              <div key={h.id} className="machine-admin-card">
+              <div key={h.id} className="machine-admin-card" style={{ cursor: 'pointer' }} onClick={() => setSelectedHostel(h)}>
                 <div className="machine-admin-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
                     <polyline points="9 22 9 12 15 12 15 22"/>
                   </svg>
                 </div>
-                <div className="machine-admin-info">
+                <div className="machine-admin-info" style={{ flex: 1 }}>
                   <span className="machine-admin-name">{h.hostel_name || h.id}</span>
                   <span className="machine-admin-meta">
-                    Login: {h.login_id || h.id} &bull; Admin: {h.admin_id || '—'} &bull; {h.contact_number || '—'}
-                  </span>
-                  <span className="machine-admin-meta">
-                    {new Date(h.created_at).toLocaleDateString()}
+                    Login: {h.login_id || h.id} &bull; {new Date(h.created_at).toLocaleDateString()}
                   </span>
                 </div>
-                <button className="delete-btn" onClick={() => handleDeleteHostel(h.id)}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#e74c3c" stroke="#e74c3c" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                <button className="btn" style={{
+                  background: '#3cc1a2', color: '#fff', padding: '8px 16px',
+                  fontSize: 12, fontWeight: 700, borderRadius: 10, width: 'auto', marginTop: 0,
+                }} onClick={(e) => { e.stopPropagation(); setSelectedHostel(h); }}>
+                  View
                 </button>
               </div>
             ))
@@ -260,4 +264,82 @@ export default function SuperAdmin() {
       {toast && <div className="toast show">{toast}</div>}
     </div>
   );
+
+  // ===== HOSTEL DETAIL VIEW =====
+  function HostelDetailView() {
+    const h = selectedHostel;
+    return (
+      <div className="admin-container">
+        <header className="admin-header">
+          <button className="back-btn" onClick={() => setSelectedHostel(null)}>←</button>
+          <h1>Hostel Details</h1>
+          <button className="logout-btn" onClick={() => setAuthenticated(false)}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </header>
+
+        <div className="admin-content">
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: 24,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)', marginBottom: 16,
+          }}>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%', background: '#e0f5ef',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
+              }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3cc1a2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                  <polyline points="9 22 9 12 15 12 15 22"/>
+                </svg>
+              </div>
+              <h2 style={{ fontSize: 20, fontWeight: 800, color: '#2c3e50', marginBottom: 4 }}>
+                {h.hostel_name || h.id}
+              </h2>
+              <p style={{ fontSize: 12, color: '#7f8c8d' }}>
+                Created {new Date(h.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+
+            {[
+              { label: 'Hostel Full Name', value: h.hostel_name },
+              { label: 'Hostel Login ID', value: h.login_id },
+              { label: 'Admin ID', value: h.admin_id },
+              { label: 'Contact Number', value: h.contact_number },
+              { label: 'Database ID', value: h.id },
+              { label: 'Machine QR URL', value: h.machine_qr_url },
+              { label: 'Room QR URL', value: h.room_qr_url },
+            ].map((item, i) => (
+              <div key={i} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '14px 0', borderBottom: i < 6 ? '1px solid #f0f0f0' : 'none',
+              }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#7f8c8d', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {item.label}
+                </span>
+                <span style={{
+                  fontSize: 14, fontWeight: 600, color: '#2c3e50', textAlign: 'right',
+                  maxWidth: '60%', wordBreak: 'break-all',
+                }}>
+                  {item.value || '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <button className="btn" style={{
+            background: '#e74c3c', color: '#fff', marginTop: 8,
+          }} onClick={() => {
+            if (confirm(`Delete hostel "${h.hostel_name || h.id}"? This will remove all its machines and data.`)) {
+              handleDeleteHostel(h.id);
+              setSelectedHostel(null);
+            }
+          }}>
+            Delete Hostel
+          </button>
+        </div>
+        {toast && <div className="toast show">{toast}</div>}
+      </div>
+    );
+  }
 }
