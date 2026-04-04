@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { getHostel } from '../lib/supabase';
+import { getHostelByLoginId } from '../lib/supabase';
 import spinlnkLogo from '../assets/spinlnk-logo.png';
 
 export default function TenantLogin() {
@@ -20,8 +20,7 @@ export default function TenantLogin() {
     setError('');
 
     try {
-      const normalized = trimmed.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-      const hostel = await getHostel(normalized);
+      const hostel = await getHostelByLoginId(trimmed);
 
       if (!hostel) {
         setError('Hostel not found. Please check your Hostel ID.');
@@ -30,11 +29,11 @@ export default function TenantLogin() {
       }
 
       // Save tenant session
-      localStorage.setItem('spinlnk_hostel', normalized);
+      localStorage.setItem('spinlnk_hostel', hostel.id);
       localStorage.setItem('spinlnk_tenant_logged_in', 'true');
 
       // Redirect to the intended page
-      const targetUrl = redirect.includes('?') ? `${redirect}&hostel=${normalized}` : `${redirect}?hostel=${normalized}`;
+      const targetUrl = redirect.includes('?') ? `${redirect}&hostel=${hostel.id}` : `${redirect}?hostel=${hostel.id}`;
       navigate(targetUrl, { replace: true });
     } catch (err) {
       setError('Connection failed. Please try again.');

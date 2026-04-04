@@ -12,6 +12,18 @@ export async function getHostel(hostelId) {
   return data;
 }
 
+export async function getHostelByAdminId(adminId) {
+  const { data, error } = await supabase.from('hostels').select('*').eq('admin_id', adminId).single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function getHostelByLoginId(loginId) {
+  const { data, error } = await supabase.from('hostels').select('*').eq('login_id', loginId).single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
 export async function createHostel(id, hostelName, loginId, adminId, contactNumber, password) {
   const { data, error } = await supabase.from('hostels').insert({
     id,

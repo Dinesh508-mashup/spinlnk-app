@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getHostel, getMachines, addMachine, deleteMachine, getWashHistory, updateHostelQR } from '../lib/supabase';
+import { getHostelByAdminId, getMachines, addMachine, deleteMachine, getWashHistory, updateHostelQR } from '../lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
 import spinlnkLogo from '../assets/spinlnk-logo.png';
 import '../styles/Admin.css';
@@ -60,18 +60,16 @@ export default function Admin() {
     const password = form.password.value;
     if (!inputId || !password) { showToast('Fill in all fields.'); return; }
 
-    const normalizedId = inputId.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-
     try {
-      const hostel = await getHostel(normalizedId);
+      const hostel = await getHostelByAdminId(inputId);
       if (!hostel) {
-        showToast('Hostel not found. Ask Super Admin to create it first.');
+        showToast('Admin ID not found.');
         return;
       }
       if (hostel.password !== password) { showToast('Invalid password.'); return; }
-      setHostelName(hostel.hostel_name || hostel.name || hostel.id);
-      setHostelId(normalizedId);
-      localStorage.setItem('spinlnk_admin_hostel', normalizedId);
+      setHostelName(hostel.hostel_name || hostel.id);
+      setHostelId(hostel.id);
+      localStorage.setItem('spinlnk_admin_hostel', hostel.id);
       setScreen('panel');
       showToast(`Welcome! Hostel: ${inputId}`);
     } catch (err) {
@@ -193,8 +191,8 @@ export default function Admin() {
   };
 
   const baseUrl = window.location.origin;
-  const machineQrUrl = `${baseUrl}/home?hostel=${hostelId}`;
-  const roomQrUrl = `${baseUrl}/queue?hostel=${hostelId}`;
+  const machineQrUrl = `${baseUrl}/home?hostel=${hostelId}&type=machine`;
+  const roomQrUrl = `${baseUrl}/queue?hostel=${hostelId}&type=room`;
 
   // Save QR URLs on QR screen
   useEffect(() => {
@@ -215,8 +213,8 @@ export default function Admin() {
             <h2>Welcome Back!</h2>
             <p className="login-sub">Please enter your details to sign in</p>
 
-            <label>HOSTEL ID</label>
-            <input name="hostelId" placeholder="e.g. sunny_hostel" required />
+            <label>ADMIN ID</label>
+            <input name="hostelId" placeholder="Enter your Admin ID" required />
 
             <label>PASSWORD</label>
             <div className="password-wrap">
