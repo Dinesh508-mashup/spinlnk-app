@@ -13,17 +13,18 @@ export default function SuperAdmin() {
   const [showPassword, setShowPassword] = useState({});
 
   // Form state
-  const [hostelId, setHostelId] = useState('');
   const [hostelName, setHostelName] = useState('');
+  const [loginId, setLoginId] = useState('');
+  const [adminId, setAdminId] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [creating, setCreating] = useState(false);
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
-  // Fetch all hostels
   const fetchHostels = async () => {
-    const { data, error } = await supabase.from('hostels').select('id, name, created_at').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('hostels').select('id, hostel_name, login_id, admin_id, contact_number, created_at').order('created_at', { ascending: false });
     if (!error) setHostels(data || []);
   };
 
@@ -45,33 +46,40 @@ export default function SuperAdmin() {
 
   const handleCreateHostel = async (e) => {
     e.preventDefault();
-    if (creating) return; // prevent double-click
+    if (creating) return;
 
-    const trimId = hostelId.trim();
-    const trimName = hostelName.trim() || trimId;
+    const trimName = hostelName.trim();
+    const trimLoginId = loginId.trim();
+    const trimAdminId = adminId.trim();
+    const trimContact = contactNumber.trim();
     const trimPass = password.trim();
 
-    if (!trimId) { showToast('Hostel ID is required.'); return; }
+    if (!trimName) { showToast('Hostel Full Name is required.'); return; }
+    if (!trimLoginId) { showToast('Hostel Login ID is required.'); return; }
+    if (!trimAdminId) { showToast('Admin ID is required.'); return; }
+    if (!trimContact) { showToast('Contact Number is required.'); return; }
     if (!trimPass) { showToast('Password is required.'); return; }
     if (trimPass.length < 4) { showToast('Password must be at least 4 characters.'); return; }
     if (trimPass !== confirmPassword) { showToast('Passwords do not match.'); return; }
 
-    const normalized = normalizeId(trimId);
+    const normalized = normalizeId(trimLoginId);
     setCreating(true);
 
     try {
       const existing = await getHostel(normalized);
       if (existing) {
-        showToast(`Hostel "${normalized}" already exists.`);
+        showToast(`Hostel with Login ID "${normalized}" already exists.`);
         setCreating(false);
         return;
       }
 
-      await createHostel(normalized, trimName, trimPass);
+      await createHostel(normalized, trimName, trimLoginId, trimAdminId, trimContact, trimPass);
       showToast(`Hostel "${trimName}" created successfully!`);
 
-      setHostelId('');
       setHostelName('');
+      setLoginId('');
+      setAdminId('');
+      setContactNumber('');
       setPassword('');
       setConfirmPassword('');
       fetchHostels();
@@ -147,26 +155,43 @@ export default function SuperAdmin() {
           <h2 className="section-title">Create New Hostel</h2>
 
           <form onSubmit={handleCreateHostel} className="sa-form">
-            <label>HOSTEL ID</label>
+            <label>HOSTEL FULL NAME</label>
             <input
-              value={hostelId}
-              onChange={e => setHostelId(e.target.value)}
+              value={hostelName}
+              onChange={e => setHostelName(e.target.value)}
+              placeholder="e.g. Sunrise Boys Hostel"
+              required
+            />
+
+            <label>HOSTEL LOGIN ID</label>
+            <input
+              value={loginId}
+              onChange={e => setLoginId(e.target.value)}
               placeholder="e.g. sunrise_hostel"
               required
             />
-            {hostelId && (
-              <p className="sa-hint">Will be saved as: <strong>{normalizeId(hostelId)}</strong></p>
+            {loginId && (
+              <p className="sa-hint">Will be saved as: <strong>{normalizeId(loginId)}</strong></p>
             )}
+
+            <label>ADMIN ID</label>
+            <input
+              value={adminId}
+              onChange={e => setAdminId(e.target.value)}
+              placeholder="e.g. admin_sunrise"
+              required
+            />
 
             <label>CONTACT NUMBER</label>
             <input
               type="tel"
-              value={hostelName}
-              onChange={e => setHostelName(e.target.value)}
+              value={contactNumber}
+              onChange={e => setContactNumber(e.target.value)}
               placeholder="e.g. +91 7075194320"
+              required
             />
 
-            <label>ADMIN PASSWORD</label>
+            <label>PASSWORD</label>
             <div className="password-wrap">
               <input
                 type={showPassword.create ? 'text' : 'password'}
@@ -216,9 +241,12 @@ export default function SuperAdmin() {
                   </svg>
                 </div>
                 <div className="machine-admin-info">
-                  <span className="machine-admin-name">{h.name || h.id}</span>
+                  <span className="machine-admin-name">{h.hostel_name || h.id}</span>
                   <span className="machine-admin-meta">
-                    ID: {h.id} &bull; {new Date(h.created_at).toLocaleDateString()}
+                    Login: {h.login_id || h.id} &bull; Admin: {h.admin_id || '—'} &bull; {h.contact_number || '—'}
+                  </span>
+                  <span className="machine-admin-meta">
+                    {new Date(h.created_at).toLocaleDateString()}
                   </span>
                 </div>
                 <button className="delete-btn" onClick={() => handleDeleteHostel(h.id)}>

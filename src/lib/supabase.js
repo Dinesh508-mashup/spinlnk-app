@@ -12,8 +12,15 @@ export async function getHostel(hostelId) {
   return data;
 }
 
-export async function createHostel(id, name, password) {
-  const { data, error } = await supabase.from('hostels').insert({ id, name, password }).select();
+export async function createHostel(id, hostelName, loginId, adminId, contactNumber, password) {
+  const { data, error } = await supabase.from('hostels').insert({
+    id,
+    hostel_name: hostelName,
+    login_id: loginId,
+    admin_id: adminId,
+    contact_number: contactNumber,
+    password,
+  }).select();
   if (error) throw error;
   return data;
 }

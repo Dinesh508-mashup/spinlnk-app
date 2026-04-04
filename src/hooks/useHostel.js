@@ -27,7 +27,7 @@ export default function useHostel() {
       try {
         const hostel = await getHostel(hostelId);
         if (hostel) {
-          setHostelName(hostel.name);
+          setHostelName(hostel.hostel_name || hostel.name || hostel.id);
         } else {
           setError('Hostel not found.');
         }

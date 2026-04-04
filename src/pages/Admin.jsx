@@ -69,7 +69,7 @@ export default function Admin() {
         return;
       }
       if (hostel.password !== password) { showToast('Invalid password.'); return; }
-      setHostelName(hostel.name);
+      setHostelName(hostel.hostel_name || hostel.name || hostel.id);
       setHostelId(normalizedId);
       localStorage.setItem('spinlnk_admin_hostel', normalizedId);
       setScreen('panel');
