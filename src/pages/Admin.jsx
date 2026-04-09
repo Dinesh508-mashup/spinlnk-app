@@ -191,8 +191,8 @@ export default function Admin() {
   };
 
   const baseUrl = window.location.origin;
-  const machineQrUrl = `${baseUrl}/home?hostel=${hostelId}&type=machine`;
-  const roomQrUrl = `${baseUrl}/queue?hostel=${hostelId}&type=room`;
+  const machineQrUrl = `${baseUrl}/go?hostel=${hostelId}&type=machine`;
+  const roomQrUrl = `${baseUrl}/go?hostel=${hostelId}&type=room`;
 
   // Save QR URLs on QR screen
   useEffect(() => {
