@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+// v2: immediate redirect, no iframe
 export default function Go() {
   const [searchParams] = useSearchParams();
   const [showManual, setShowManual] = useState(false);
