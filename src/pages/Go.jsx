@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 export default function Go() {
   const [searchParams] = useSearchParams();
-  const [phase, setPhase] = useState('launching'); // 'launching' | 'manual'
+  const [showManual, setShowManual] = useState(false);
   const didLeave = useRef(false);
 
   const hostel = searchParams.get('hostel') || '';
@@ -14,44 +14,27 @@ export default function Go() {
   useEffect(() => {
     if (!hostel) return;
 
-    // Track if the browser loses focus (means deep link worked)
     const onVisChange = () => { if (document.hidden) didLeave.current = true; };
     const onBlur = () => { didLeave.current = true; };
     document.addEventListener('visibilitychange', onVisChange);
     window.addEventListener('blur', onBlur);
 
-    // Attempt 1: iframe trick (works on Android Chrome without showing error)
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = deepLink;
-    document.body.appendChild(iframe);
+    // Single immediate redirect — most reliable across iOS and Android
+    window.location.href = deepLink;
 
-    // Attempt 2: direct location (catches iOS Safari + other browsers)
-    setTimeout(() => {
-      if (!didLeave.current) {
-        window.location.href = deepLink;
-      }
-    }, 100);
-
-    // After 2s, if still here, show manual button
-    const fallbackTimer = setTimeout(() => {
-      if (!didLeave.current) {
-        setPhase('manual');
-      }
-    }, 2000);
+    // If still here after 1.5s, the app didn't open — show manual UI
+    const timer = setTimeout(() => {
+      if (!didLeave.current) setShowManual(true);
+    }, 1500);
 
     return () => {
-      clearTimeout(fallbackTimer);
+      clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisChange);
       window.removeEventListener('blur', onBlur);
-      if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
     };
   }, [hostel, deepLink]);
 
-  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  // Phase 1: Auto-launching
-  if (phase === 'launching') {
+  if (!showManual) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
@@ -63,7 +46,8 @@ export default function Go() {
     );
   }
 
-  // Phase 2: Manual — auto-launch didn't work, show tap button
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
   return (
     <div style={styles.container}>
       <div style={styles.card}>
@@ -73,14 +57,13 @@ export default function Go() {
         <h2 style={styles.title}>SpinLnk</h2>
         <p style={styles.subtitle}>Laundry made simple</p>
 
-        {/* Primary CTA — tappable link is more reliable than JS redirect on iOS */}
         <a href={deepLink} style={styles.openBtn}>
           Open in App
         </a>
 
         {isIOS && (
           <p style={styles.iosHint}>
-            On iPhone, tap <strong>Open</strong> when Safari asks to open SpinLnk.
+            Tap <strong>Open</strong> when Safari asks to open SpinLnk.
           </p>
         )}
 
@@ -94,20 +77,10 @@ export default function Go() {
         </p>
 
         <div style={styles.storeRow}>
-          <a
-            href="https://apps.apple.com/app/expo-go/id982107779"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={styles.storeLink}
-          >
+          <a href="https://apps.apple.com/app/expo-go/id982107779" target="_blank" rel="noopener noreferrer" style={styles.storeLink}>
             iOS App Store
           </a>
-          <a
-            href="https://play.google.com/store/apps/details?id=host.exp.exponent"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={styles.storeLink}
-          >
+          <a href="https://play.google.com/store/apps/details?id=host.exp.exponent" target="_blank" rel="noopener noreferrer" style={styles.storeLink}>
             Google Play
           </a>
         </div>
@@ -156,22 +129,9 @@ const styles = {
     boxShadow: '0 4px 16px rgba(13,148,136,0.3)',
   },
   logoEmoji: { fontSize: 32 },
-  title: {
-    fontSize: 24,
-    fontWeight: 800,
-    color: '#111827',
-    margin: '0 0 4px',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    margin: '0 0 24px',
-  },
-  text: {
-    fontSize: 16,
-    color: '#374151',
-    margin: '0 0 8px',
-  },
+  title: { fontSize: 24, fontWeight: 800, color: '#111827', margin: '0 0 4px' },
+  subtitle: { fontSize: 14, color: '#6b7280', margin: '0 0 24px' },
+  text: { fontSize: 16, color: '#374151', margin: '0 0 8px' },
   openBtn: {
     display: 'block',
     background: '#0d9488',
@@ -183,35 +143,11 @@ const styles = {
     fontSize: 17,
     marginBottom: 12,
   },
-  iosHint: {
-    fontSize: 13,
-    color: '#6b7280',
-    margin: '0 0 0',
-    lineHeight: '1.5',
-  },
-  divider: {
-    height: 1,
-    background: '#e5e7eb',
-    margin: '24px 0',
-  },
-  setupTitle: {
-    fontSize: 15,
-    fontWeight: 700,
-    color: '#374151',
-    margin: '0 0 8px',
-  },
-  setupText: {
-    fontSize: 13,
-    color: '#6b7280',
-    lineHeight: '1.7',
-    margin: '0 0 16px',
-    textAlign: 'left',
-  },
-  storeRow: {
-    display: 'flex',
-    gap: 10,
-    justifyContent: 'center',
-  },
+  iosHint: { fontSize: 13, color: '#6b7280', margin: '0', lineHeight: '1.5' },
+  divider: { height: 1, background: '#e5e7eb', margin: '24px 0' },
+  setupTitle: { fontSize: 15, fontWeight: 700, color: '#374151', margin: '0 0 8px' },
+  setupText: { fontSize: 13, color: '#6b7280', lineHeight: '1.7', margin: '0 0 16px', textAlign: 'left' },
+  storeRow: { display: 'flex', gap: 10, justifyContent: 'center' },
   storeLink: {
     color: '#0d9488',
     fontWeight: 600,
