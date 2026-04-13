@@ -173,3 +173,5 @@ body {
 }
 .nav-center-btn:active { transform: scale(0.92); }
 .nav-center-btn svg { filter: brightness(0) invert(1); }
+
+@keyframes spin { to { transform: rotate(360deg); } }

@@ -4,9 +4,9 @@ import Home from './pages/Home';
 import LineUp from './pages/LineUp';
 import Live from './pages/Live';
 import Join from './pages/Join';
+import Go from './pages/Go';
 import Admin from './pages/Admin';
 import SuperAdmin from './pages/SuperAdmin';
-import Go from './pages/Go';
 import TenantLogin from './pages/TenantLogin';
 import { registerServiceWorker } from './lib/pushNotifications';
 import './App.css';
@@ -37,14 +37,14 @@ export default function App() {
       <Routes>
         {/* Tenant login */}
         <Route path="/" element={<TenantLogin />} />
+        {/* QR code landing — tries deep link, falls back to web */}
+        <Route path="/go" element={<Go />} />
         {/* Machine QR screens (require hostel login) */}
         <Route path="/home" element={<RequireHostel><Home /></RequireHostel>} />
         <Route path="/lineup" element={<RequireHostel><LineUp /></RequireHostel>} />
         {/* Room QR screens (require hostel login) */}
         <Route path="/queue" element={<RequireHostel><Live /></RequireHostel>} />
         <Route path="/join" element={<RequireHostel><Join /></RequireHostel>} />
-        {/* Expo Go landing page */}
-        <Route path="/go" element={<Go />} />
         {/* Admin */}
         <Route path="/admin" element={<Admin />} />
         <Route path="/super-admin" element={<SuperAdmin />} />
