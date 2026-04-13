@@ -37,7 +37,7 @@ export default function App() {
       <Routes>
         {/* Tenant login */}
         <Route path="/" element={<TenantLogin />} />
-        {/* QR code landing — tries deep link, falls back to web */}
+        {/* QR code landing — opens Expo Go app via deep link */}
         <Route path="/go" element={<Go />} />
         {/* Machine QR screens (require hostel login) */}
         <Route path="/home" element={<RequireHostel><Home /></RequireHostel>} />
